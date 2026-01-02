@@ -1,0 +1,30 @@
+<div>
+  <h3>Cola de Reproducción</h3>
+  <audio #audioPlayer [attr.playsinline]="true" preload="auto" style="width:0;height:0;overflow:hidden;border:0;"></audio>
+  <!-- Eliminado control global: siempre reproducir si hay una canción -->
+
+  <!-- Overlay eliminado: se ha solicitado ocultarlo por completo -->
+
+  <div *ngIf="nowPlaying; else emptyQueue">
+    <h4>Sonando ahora:</h4>
+    <div>
+      <img [src]="nowPlaying.albumCover" alt="Carátula" width="100">
+      <p><b>{{ nowPlaying.title }}</b> - {{ nowPlaying.artist }}</p>
+      <p *ngIf="audioStatus">Estado: {{ audioStatus }}</p>
+      <p *ngIf="remainingSeconds !== null">Tiempo restante: {{ formatTime(remainingSeconds) }}</p>
+      <!-- Reproducción automática por tiempo; no se muestran botones -->
+    </div>
+
+    <h4 *ngIf="upNext.length > 0">A continuación:</h4>
+    <ul>
+      <li *ngFor="let song of upNext">
+        <img [src]="song.albumCover" alt="Carátula" width="50">
+        <span>{{ song.title }} - {{ song.artist }}</span>
+      </li>
+    </ul>
+  </div>
+
+  <ng-template #emptyQueue>
+    <p>No hay canciones en la cola.</p>
+  </ng-template>
+</div>

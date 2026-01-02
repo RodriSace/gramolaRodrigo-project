@@ -1,0 +1,21 @@
+<div>
+  <h3>Busca una canción</h3>
+  <p *ngIf="priceInCents !== null" class="helper">Precio por canción: {{ (priceInCents!/100) | number:'1.2-2' }} €</p>
+  <input type="text" [(ngModel)]="searchTerm" (keyup.enter)="buscarCanciones()" placeholder="Artista o canción...">
+  <button (click)="buscarCanciones()">Buscar</button>
+</div>
+
+<ul *ngIf="results && !message">
+  <li *ngFor="let song of results.data">
+    <img [src]="song.album.cover_small" alt="Carátula del álbum">
+    {{ song.title }} - {{ song.artist.name }}
+    <button (click)="selectSong(song)">Añadir a la cola</button>
+  </li>
+</ul>
+
+<h3 *ngIf="message">{{ message }}</h3>
+
+<div *ngIf="clientSecret && !message">
+  <app-payment-form [clientSecret]="clientSecret" [stripe]="stripe" (paymentSucceeded)="onPaymentSuccess($event)"></app-payment-form>
+  <p *ngIf="payMessage">{{ payMessage }}</p>
+</div>

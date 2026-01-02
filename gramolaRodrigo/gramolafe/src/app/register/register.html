@@ -1,0 +1,39 @@
+<div class="card">
+  <h3>Crear una cuenta para tu bar</h3>
+
+  <div class="form-row">
+    <label for="name">Nombre del Bar</label>
+    <input type="text" [(ngModel)]="name" id="name" name="name" placeholder="Ej. Bar El Solar">
+  </div>
+
+  <div class="form-row">
+    <label for="email">Email</label>
+    <input type="email" [(ngModel)]="email" id="email" name="email" placeholder="bar@ejemplo.com">
+  </div>
+
+  <div class="form-row">
+    <label for="password">Contraseña</label>
+    <input type="password" [(ngModel)]="pwd" id="password" name="password" placeholder="••••••••">
+  </div>
+
+  <div class="form-row">
+    <label for="clientId">Deezer App ID</label>
+    <input type="text" [(ngModel)]="clientId" id="clientId" name="clientId" placeholder="Tu App ID de Deezer">
+  </div>
+
+  <div class="form-row">
+    <label for="clientSecret">Deezer App Secret</label>
+    <input type="password" [(ngModel)]="clientSecret" id="clientSecret" name="clientSecret" placeholder="Tu App Secret de Deezer">
+  </div>
+
+  <div class="form-row">
+    <label for="password2">Confirmar Contraseña</label>
+    <input type="password" [(ngModel)]="pwd2" id="password2" name="password2" placeholder="••••••••">
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" (click)="registrar()">Registrar</button>
+  </div>
+
+  <p class="message" *ngIf="message" [class.error]="message.startsWith('Error:')" [class.success]="!message.startsWith('Error:')">{{ message }}</p>
+</div>
