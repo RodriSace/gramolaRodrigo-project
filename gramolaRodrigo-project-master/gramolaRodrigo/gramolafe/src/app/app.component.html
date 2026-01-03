@@ -1,0 +1,43 @@
+<div class="container">
+	<nav style="display:flex; gap:12px; margin-bottom:12px; align-items:center">
+		<a routerLink="/" style="font-weight:600">Inicio</a>
+		<a routerLink="/forgot-password">Olvidé mi contraseña</a>
+		<a *ngIf="!subscriptionActive" routerLink="/subscribe">Suscripción</a>
+	</nav>
+	<router-outlet></router-outlet>
+		<div *ngIf="currentUser$ | async as user; else showLogin">
+		<h1 class="page-title">Gramola Virtual</h1>
+
+	<div class="welcome-banner">
+		<span>¡Bienvenido, <strong>{{ user.name }}</strong>!</span>
+		<span *ngIf="subscriptionActive" class="badge badge-success" style="margin-left:8px">Suscripción activa</span>
+		<a *ngIf="!subscriptionActive" routerLink="/subscribe" class="badge badge-warning" style="margin-left:8px">Suscripción inactiva: suscríbete</a>
+		<button (click)="logout()">Cerrar Sesión</button>
+	</div>
+
+	<app-queue></app-queue>
+	<hr>
+	<app-song-search></app-song-search>
+	</div>
+
+				<ng-template #showLogin>
+				<div class="auth-screen">
+					<div class="auth-layout">
+				<section class="auth-hero">
+					<div>
+						<h2 style="margin:0 0 8px;font-size:24px;letter-spacing:-.02em">Pon música a tu bar</h2>
+						<p class="tagline">Cobras una pequeña cantidad y tus clientes eligen el próximo hit. Una cola inteligente, pagos sencillos y 30 segundos para subir el ambiente.</p>
+						<div class="eq" aria-hidden="true">
+							<span></span><span></span><span></span><span></span><span></span>
+						</div>
+					</div>
+					<div class="helper">Consejo: usa un nombre de bar reconocible y un email al que tengas acceso para gestionar la cuenta.</div>
+				</section>
+				<div class="grid-auth">
+					<app-register></app-register>
+					<app-login></app-login>
+				</div>
+					</div>
+			</div>
+		</ng-template>
+</div>

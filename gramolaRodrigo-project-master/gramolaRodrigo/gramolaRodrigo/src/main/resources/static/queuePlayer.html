@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Queue Player</title>
+  <style>img{vertical-align:middle;margin-right:8px}</style>
+</head>
+<body>
+  <h1>Queue Player</h1>
+  <div id="now"></div>
+  <audio id="player" controls></audio>
+  <script>
+    const player = document.getElementById('player');
+    const now = document.getElementById('now');
+
+    async function fetchQueue(){
+      const res = await fetch('/queue');
+      if(!res.ok) return [];
+      return res.json();
+    }
+
+    async function start(){
+      const q = await fetchQueue();
+      if(!q || q.length===0){ now.innerText='La cola está vacía'; player.src=''; return; }
+      const track = q[0];
+      now.innerHTML = `<img src="${track.albumCover}" width="48"/> <strong>${track.title}</strong> — ${track.artist}`;
+      // usamos el proxy en backend para evitar CORS
+      player.src = '/api/deezer/preview/' + track.songId;
+      player.play().catch(()=>{});
+    }
+
+    player.addEventListener('ended', async () => {
+      // avisamos al backend y reiniciamos
+      await fetch('/queue/next', {method:'POST'});
+      start();
+    });
+
+    window.addEventListener('load', start);
+  </script>
+</body>
+</html>

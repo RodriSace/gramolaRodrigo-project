@@ -1,0 +1,10 @@
+<div>
+  <h4>Introduce los datos de tu tarjeta</h4>
+  <div id="song-payment-element"></div>
+
+  <button (click)="handleSubmit()">Pagar</button>
+
+  <div *ngIf="message" id="payment-message">
+    {{ message }}
+  </div>
+</div>

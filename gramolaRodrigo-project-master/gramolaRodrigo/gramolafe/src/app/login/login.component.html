@@ -1,0 +1,19 @@
+<div class="card">
+  <h3>Iniciar Sesión</h3>
+
+  <div class="form-row">
+    <label for="login-email">Email</label>
+    <input type="email" [(ngModel)]="email" id="login-email" name="email" placeholder="bar@ejemplo.com">
+  </div>
+
+  <div class="form-row">
+    <label for="login-password">Contraseña</label>
+    <input type="password" [(ngModel)]="pwd" id="login-password" name="password" placeholder="••••••••">
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" (click)="iniciarSesion()">Iniciar Sesión</button>
+  </div>
+
+  <p class="message" *ngIf="message" [class.error]="message.startsWith('Error:')" [class.success]="!message.startsWith('Error:')">{{ message }}</p>
+</div>
