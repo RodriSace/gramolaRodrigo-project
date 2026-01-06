@@ -1,109 +1,161 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { API_URL } from '../api.config';
 import { AuthService } from '../auth.service';
-import { Router } from '@angular/router';
 
+// Declaramos la variable global de Stripe
 declare var Stripe: any;
 
 @Component({
   selector: 'app-subscribe',
   standalone: true,
   imports: [CommonModule],
-  template: `
-  <div class="card">
-    <h3>Elige tu suscripción</h3>
-    <p *ngIf="isActive" class="alert alert-success">Ya estás suscrito.</p>
-    <ul *ngIf="!isActive">
-      <li *ngFor="let p of plans">
-        <strong>{{ p.name }}</strong> — {{ (p.amountInCents/100) | number:'1.2-2' }} €
-        <button class="btn btn-primary" (click)="startCheckout(p.id)" *ngIf="!isActive">Suscribirme</button>
-      </li>
-    </ul>
-    <div *ngIf="!isActive" id="payment-element"></div>
-    <button *ngIf="clientSecret && !isActive" class="btn btn-success" (click)="confirm()">Pagar ahora</button>
-    <p class="message" *ngIf="message">{{ message }}</p>
-  </div>
-  `,
+  templateUrl: './subscribe.component.html',
+  styles: [`
+    /* Estilos específicos para el elemento de pago de Stripe */
+    #payment-element {
+      min-height: 200px;
+      margin-bottom: 20px;
+    }
+  `]
 })
 export class SubscribeComponent implements OnInit {
   plans: any[] = [];
   message = '';
+  loading = false; // Para mostrar spinners o deshabilitar botones
+  
+  // Variables de Stripe
   stripe: any;
   elements: any;
   clientSecret: string | null = null;
+  
+  // Estado del usuario
   isActive = false;
+  selectedPlanId: string | null = null;
 
-  constructor(private http: HttpClient, private auth: AuthService, private router: Router) {}
+  constructor(
+    private http: HttpClient, 
+    private auth: AuthService, 
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
+    // 1. Inicializar Stripe con tu clave pública
     this.stripe = Stripe('pk_test_51SGRYtLYhxLLPwjrdBNI8h9ON82IcZ3vgt4lRa1rx9U9vMEyC9cLjeLvKB3IUHzzfUvoR55YvXHGNKhlrCIO5A7P00cvJSZ47X');
+
+    // 2. Obtener planes del backend
     this.http.get<any[]>(`${API_URL}/plans`).subscribe({
-      next: d => this.plans = d,
-      error: () => this.message = 'No se pudieron cargar los planes'
+      next: (d) => {
+        this.plans = d;
+        // Si no hay planes en BD, creamos uno ficticio para que se vea algo en pantalla (opcional)
+        if (this.plans.length === 0) {
+          this.plans = [
+            { id: 'price_fake_1', name: 'Plan Mensual Básico', amountInCents: 999 },
+            { id: 'price_fake_2', name: 'Plan Anual Pro', amountInCents: 9900 }
+          ];
+        }
+      },
+      error: () => this.message = 'Error: No se pudieron cargar los planes.'
     });
-    // Opcional: podríamos consultar el estado para ocultar botones aquí si tuviéramos el bar en sesión
+
+    // 3. Comprobar si ya está suscrito
     const bar = this.auth.currentUserValue;
     if (bar) {
       this.http.get<any>(`${API_URL}/bars/subscription-status`, { params: { barId: bar.id } }).subscribe(s => {
         this.isActive = !!s.active;
         if (this.isActive) {
-          this.message = 'Ya estás suscrito.';
-          // Redirige fuera de la página de suscripción para que "se vaya esa zona"
-          setTimeout(() => this.router.navigateByUrl('/'), 500);
+          this.message = '¡Ya tienes una suscripción activa!';
+          // Redirigir tras 2 segundos
+          setTimeout(() => this.router.navigate(['/search']), 2000);
         }
       });
+    } else {
+      // Si no hay usuario, mandar al login
+      this.router.navigate(['/login']);
     }
   }
 
+  // Paso 1: El usuario elige un plan
   startCheckout(planId: string) {
-    this.message='';
+    this.loading = true;
+    this.message = '';
+    this.selectedPlanId = planId;
+
     this.http.post(`${API_URL}/payments/subscription-intent`, { planId }).subscribe({
       next: (res: any) => {
         this.clientSecret = res.clientSecret;
-        const options = { clientSecret: this.clientSecret, appearance: { theme: 'stripe' } };
+        
+        // Configuración visual de Stripe (Modo Oscuro para que cuadre con tu app)
+        const appearance = { theme: 'night', labels: 'floating' };
+        const options = { clientSecret: this.clientSecret, appearance };
+        
         this.elements = this.stripe.elements(options);
         const paymentElement = this.elements.create('payment');
         paymentElement.mount('#payment-element');
-        // Guardamos plan elegido para confirmar después
-        (this as any)._selectedPlanId = planId;
+        
+        this.loading = false;
       },
-      error: () => this.message = 'No se pudo iniciar el pago'
+      error: (err) => {
+        console.error(err);
+        this.message = 'Error al iniciar la pasarela de pago.';
+        this.loading = false;
+      }
     });
   }
 
+  // Paso 2: Confirmar el pago con Stripe
   async confirm() {
+    this.loading = true;
     this.message = '';
-    const { error, paymentIntent } = await this.stripe.confirmPayment({ elements: this.elements, redirect: 'if_required' });
-    if (error) { this.message = error.message || 'Error al confirmar el pago'; return; }
-    if (!paymentIntent) { this.message = 'No se recibió estado de pago.'; return; }
-    if (paymentIntent.status === 'requires_action' || paymentIntent.status === 'processing') {
-      this.message = 'Procesando autenticación...';
+
+    const { error, paymentIntent } = await this.stripe.confirmPayment({
+      elements: this.elements,
+      redirect: 'if_required' // Importante para no recargar la página si no es necesario
+    });
+
+    if (error) {
+      this.message = error.message || 'Error al procesar el pago.';
+      this.loading = false;
       return;
     }
-    if (paymentIntent.status !== 'succeeded') {
-      this.message = 'Pago no completado.';
-      return;
+
+    if (paymentIntent && paymentIntent.status === 'succeeded') {
+      this.finalizeSubscription();
+    } else {
+      this.message = 'El estado del pago es: ' + (paymentIntent ? paymentIntent.status : 'desconocido');
+      this.loading = false;
     }
-    // Emitir evento global para reanudar audio que podría haber quedado bloqueado por el flujo de pago
-    try { window.dispatchEvent(new Event('app:resume-audio')); } catch(e) {}
+  }
+
+  // Paso 3: Avisar al backend de que todo fue bien
+  finalizeSubscription() {
     const bar = this.auth.currentUserValue;
-    if (!bar) { this.message = 'Inicia sesión para confirmar la suscripción.'; return; }
-    const planId = (this as any)._selectedPlanId;
-    this.http.post(`${API_URL}/payments/subscription-confirm`, { planId, barId: bar.id }).subscribe({
+    if (!bar || !this.selectedPlanId) return;
+
+    this.http.post(`${API_URL}/payments/subscription-confirm`, { 
+      planId: this.selectedPlanId, 
+      barId: bar.id 
+    }).subscribe({
       next: (res: any) => {
-        this.message = 'Suscripción activada. ¡Gracias!';
-        // Si el backend devuelve el bar, guardamos sesión automáticamente
-        if (res?.bar) {
-          try { this.auth.login(res.bar); } catch {}
-        }
+        this.message = '¡Suscripción activada correctamente!';
         this.isActive = true;
         this.clientSecret = null;
-        try { window.dispatchEvent(new Event('app:subscription-updated')); } catch(e) {}
-        setTimeout(() => this.router.navigateByUrl('/'), 900);
+        this.loading = false;
+
+        // Actualizar datos del usuario si el backend devuelve el objeto actualizado
+        if (res?.bar) {
+          sessionStorage.setItem('currentUser', JSON.stringify(res.bar));
+        }
+
+        // Redirigir a la app principal
+        setTimeout(() => this.router.navigate(['/search']), 1500);
       },
-      error: () => this.message = 'No se pudo confirmar la suscripción'
+      error: () => {
+        this.message = 'Pago aceptado en Stripe, pero error al guardar en base de datos. Contacta con soporte.';
+        this.loading = false;
+      }
     });
   }
 }

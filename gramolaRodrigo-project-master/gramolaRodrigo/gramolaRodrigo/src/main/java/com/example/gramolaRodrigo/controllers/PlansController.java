@@ -1,35 +1,52 @@
 package com.example.gramolaRodrigo.controllers;
 
 import java.util.List;
-import java.util.Map;
+import java.util.UUID;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
 import com.example.gramolaRodrigo.entities.SubscriptionPlan;
 import com.example.gramolaRodrigo.repositories.SubscriptionPlanRepository;
-import com.example.gramolaRodrigo.repositories.SongPriceRepository;
+
+import jakarta.annotation.PostConstruct;
 
 @RestController
 @RequestMapping("/plans")
 public class PlansController {
 
-    private final SubscriptionPlanRepository planRepo;
-    private final SongPriceRepository songPriceRepo;
+    private final SubscriptionPlanRepository planRepository;
 
-    public PlansController(SubscriptionPlanRepository planRepo, SongPriceRepository songPriceRepo) {
-        this.planRepo = planRepo;
-        this.songPriceRepo = songPriceRepo;
+    public PlansController(SubscriptionPlanRepository planRepository) {
+        this.planRepository = planRepository;
+    }
+
+    // Inicializar planes si no existen al arrancar
+    @PostConstruct
+    public void initPlans() {
+        if (planRepository.count() == 0) {
+            SubscriptionPlan p1 = new SubscriptionPlan();
+            p1.setId("MONTHLY");
+            p1.setName("Plan Mensual");
+            p1.setAmountInCents(999L); // 9.99€
+            p1.setDurationDays(30);
+            planRepository.save(p1);
+
+            SubscriptionPlan p2 = new SubscriptionPlan();
+            p2.setId("ANNUAL");
+            p2.setName("Plan Anual (Ahorro)");
+            p2.setAmountInCents(9900L); // 99.00€
+            p2.setDurationDays(365);
+            planRepository.save(p2);
+            
+            System.out.println(">>> Planes de suscripción inicializados por defecto.");
+        }
     }
 
     @GetMapping
-    public ResponseEntity<List<SubscriptionPlan>> listActivePlans() {
-        return ResponseEntity.ok(planRepo.findByActiveTrue());
-    }
-
-    @GetMapping("/song-price")
-    public ResponseEntity<Map<String, Long>> getSongPrice() {
-        long amount = songPriceRepo.findFirstByActiveTrue().map(p -> p.getAmountInCents()).orElse(50L);
-        return ResponseEntity.ok(Map.of("amountInCents", amount));
+    public ResponseEntity<List<SubscriptionPlan>> getAllPlans() {
+        return ResponseEntity.ok(planRepository.findAll());
     }
 }

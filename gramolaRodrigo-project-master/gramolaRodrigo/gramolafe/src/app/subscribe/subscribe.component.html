@@ -1,0 +1,116 @@
+<div class="container text-center" style="margin-top: 2rem; max-width: 900px;">
+  
+  <div class="mb-4">
+    <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">Planes de Suscripción</h1>
+    <p style="color: var(--text-muted);">Elige el plan que mejor se adapte a tu establecimiento.</p>
+  </div>
+
+  <div *ngIf="message" class="alert-box" [ngClass]="{'success': isActive, 'error': !isActive && message}">
+    {{ message }}
+  </div>
+
+  <div class="plans-grid" *ngIf="!clientSecret && !isActive">
+    <div class="card plan-card" *ngFor="let p of plans">
+      <h3>{{ p.name }}</h3>
+      <div class="price">
+        {{ (p.amountInCents / 100) | number:'1.2-2' }} €
+      </div>
+      <ul class="features-list">
+        <li><span class="material-icons">check</span> Acceso ilimitado</li>
+        <li><span class="material-icons">check</span> Soporte técnico</li>
+        <li><span class="material-icons">check</span> Modo Jukebox</li>
+      </ul>
+      <button class="btn-primary w-100" (click)="startCheckout(p.id)" [disabled]="loading">
+        {{ loading ? 'Cargando...' : 'Seleccionar' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="checkout-container card" *ngIf="clientSecret && !isActive">
+    <h3 style="margin-bottom: 1.5rem; color: var(--primary-color);">Datos de Pago</h3>
+    
+    <div id="payment-element"></div>
+
+    <div class="actions" style="margin-top: 20px; display: flex; justify-content: space-between;">
+      <button class="btn-secondary" (click)="clientSecret = null">Atrás</button>
+      <button class="btn-primary" (click)="confirm()" [disabled]="loading">
+        <span *ngIf="loading" class="material-icons spin">refresh</span>
+        {{ loading ? 'Procesando...' : 'Pagar y Activar' }}
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<style>
+  /* GRID DE PLANES */
+  .plans-grid {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+  
+  .plan-card {
+    background: linear-gradient(145deg, rgba(30,30,30,0.8), rgba(20,20,20,0.9));
+    width: 300px;
+    padding: 2rem;
+    text-align: center;
+    transition: transform 0.3s ease;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  
+  .plan-card:hover {
+    transform: translateY(-10px);
+    border-color: var(--primary-color);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+
+  .price {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 1rem 0;
+  }
+
+  .features-list {
+    text-align: left;
+    margin-bottom: 2rem;
+    color: #ccc;
+    list-style: none;
+    padding: 0;
+  }
+
+  .features-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .features-list span {
+    color: var(--secondary-color);
+    font-size: 1.2rem;
+  }
+
+  /* ALERTAS */
+  .alert-box {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: bold;
+  }
+  .success { background: rgba(3, 218, 198, 0.2); color: #03dac6; border: 1px solid #03dac6; }
+  .error { background: rgba(207, 102, 121, 0.2); color: #cf6679; border: 1px solid #cf6679; }
+
+  /* CONTENEDOR DE PAGO */
+  .checkout-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  /* Animación de carga */
+  .spin { animation: rotation 1s infinite linear; font-size: 18px; margin-right: 5px; }
+  @keyframes rotation { from { transform: rotate(0deg); } to { transform: rotate(359deg); } }
+</style>

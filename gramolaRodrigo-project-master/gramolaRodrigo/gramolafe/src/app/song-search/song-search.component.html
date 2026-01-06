@@ -1,21 +1,47 @@
-<div>
-  <h3>Busca una canción</h3>
-  <p *ngIf="priceInCents !== null" class="helper">Precio por canción: {{ (priceInCents!/100) | number:'1.2-2' }} €</p>
-  <input type="text" [(ngModel)]="searchTerm" (keyup.enter)="buscarCanciones()" placeholder="Artista o canción...">
-  <button (click)="buscarCanciones()">Buscar</button>
-</div>
+<div class="container" style="max-width: 800px; margin-top: 2rem;">
+  
+  <h2 class="text-center mb-4">Buscar Música</h2>
 
-<ul *ngIf="results && !message">
-  <li *ngFor="let song of results.data">
-    <img [src]="song.album.cover_small" alt="Carátula del álbum">
-    {{ song.title }} - {{ song.artist.name }}
-    <button (click)="selectSong(song)">Añadir a la cola</button>
-  </li>
-</ul>
+  <div class="search-box card" style="background: rgba(30,30,30,0.6); padding: 1.5rem; display: flex; align-items: center; gap: 10px;">
+    <div style="position: relative; width: 100%;">
+      <span class="material-icons" style="position: absolute; left: 15px; top: 12px; color: #888;">search</span>
+      <input type="text" [(ngModel)]="query" (keyup.enter)="search()" placeholder="Busca por canción, artista..." 
+             style="width: 100%; padding: 12px 12px 12px 45px; border-radius: 50px; border: none; background: rgba(255,255,255,0.1); color: white;">
+    </div>
+    <button class="btn-primary" (click)="search()" [disabled]="isLoading" style="border-radius: 50px; padding: 12px 25px;">
+      {{ isLoading ? '...' : 'Buscar' }}
+    </button>
+  </div>
 
-<h3 *ngIf="message">{{ message }}</h3>
+  <div class="results-list" *ngIf="results.length > 0">
+    <h3 style="margin: 2rem 0 1rem; color: var(--secondary-color);">Resultados</h3>
+    
+    <div class="song-card" *ngFor="let song of results" style="display: flex; align-items: center; background: rgba(255,255,255,0.05); padding: 15px; margin-bottom: 10px; border-radius: 12px; transition: 0.2s;">
+      <img [src]="song.albumCover || 'assets/default-cover.png'" alt="Cover" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
+      
+      <div style="flex: 1; margin-left: 15px;">
+        <div style="font-weight: bold; font-size: 1.1rem; color: white;">{{ song.title }}</div>
+        <div style="color: #aaa; font-size: 0.9rem;">{{ song.artist }}</div>
+      </div>
+      
+      <button class="btn-secondary" (click)="initiatePayment(song)" style="border-radius: 20px; padding: 8px 16px; font-size: 0.9rem; display: flex; align-items: center; gap: 5px;">
+        <span class="material-icons" style="font-size: 18px;">add_shopping_cart</span> 
+        {{ (priceInCents/100) | number:'1.2-2' }}€
+      </button>
+    </div>
+  </div>
 
-<div *ngIf="clientSecret && !message">
-  <app-payment-form [clientSecret]="clientSecret" [stripe]="stripe" (paymentSucceeded)="onPaymentSuccess($event)"></app-payment-form>
-  <p *ngIf="payMessage">{{ payMessage }}</p>
+  <div *ngIf="results.length === 0 && !isLoading && query !== ''" class="text-center" style="margin-top: 3rem; color: #666;">
+    <span class="material-icons" style="font-size: 3rem;">music_off</span>
+    <p>No se encontraron resultados.</p>
+  </div>
+
+  <app-payment-form 
+    *ngIf="selectedSongForPayment"
+    [songTitle]="selectedSongForPayment.title"
+    [price]="priceInCents / 100"
+    (cancel)="cancelPayment()"
+    (pay)="processPaymentSuccess()">
+  </app-payment-form>
+
 </div>

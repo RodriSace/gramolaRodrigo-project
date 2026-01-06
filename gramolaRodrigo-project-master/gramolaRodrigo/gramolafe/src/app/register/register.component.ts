@@ -1,46 +1,48 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { UserService } from '../user.service';
+import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-register',
-  standalone: true, // <-- ESTA LÍNEA ES LA CLAVE
-  imports: [CommonModule, FormsModule],
-  // the project uses `register.html` and `register.css` in the same folder
-  templateUrl: './register.html',
-  styleUrls: ['./register.css']
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterLink],
+  templateUrl: './register.html'
 })
 export class RegisterComponent {
-  name?: string;
-  email?: string;
-  pwd?: string;
-  pwd2?: string;
-  clientId?: string;
-  clientSecret?: string;
-  message?: string;
+  user = {
+    name: '',
+    email: '',
+    pwd1: '',
+    pwd2: ''
+  };
 
-  constructor(private userService: UserService) { }
+  constructor(private authService: AuthService, private router: Router) {}
 
-  registrar() {
-    this.message = '';
-    if (this.pwd !== this.pwd2) {
-      this.message = 'Error: Las contraseñas no coinciden';
+  register() {
+    if (!this.user.name || !this.user.email || !this.user.pwd1) {
+      alert('Todos los campos son obligatorios.');
       return;
     }
-  const userData = { name: this.name, email: this.email, pwd1: this.pwd, pwd2: this.pwd2, clientId: this.clientId || null, clientSecret: this.clientSecret || null };
 
-    this.userService.register(userData).subscribe({
+    if (this.user.pwd1 !== this.user.pwd2) {
+      alert('Las contraseñas no coinciden.');
+      return;
+    }
+
+    this.authService.register(this.user).subscribe({
       next: () => {
-        this.message = `Registro correcto. Revisa tu correo para confirmar la cuenta.`;
+        // MENSAJE ACTUALIZADO
+        alert('¡Cuenta creada! Se ha enviado un enlace de verificación a tu correo (o revisa los logs de la consola Java).');
+        this.router.navigate(['/login']);
       },
-      error: (error: any) => {
-        if (error?.status === 409) {
-          this.message = 'Error: Ya existe un bar activo con ese email o nombre.';
-        } else if (error?.status === 406) {
-          this.message = 'Error: Datos inválidos (revisa contraseñas y campos obligatorios).';
+      error: (err: any) => {
+        console.error('Error en registro:', err);
+        if (err.status === 409) {
+          alert('Error: El email o nombre de bar ya está registrado.');
         } else {
-          this.message = 'Ha ocurrido un error al registrar el bar.';
+          alert('Ocurrió un error durante el registro.');
         }
       }
     });

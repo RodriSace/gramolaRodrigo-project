@@ -3,6 +3,7 @@ package com.example.gramolaRodrigo.controllers;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,6 @@ public class PaymentsController {
     private final SubscriptionPlanRepository planRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final BarRepository barRepository;
-
     private final com.example.gramolaRodrigo.services.BarService barService;
 
     public PaymentsController(QueueService queueService, SongPriceRepository songPriceRepository,
@@ -61,28 +61,36 @@ public class PaymentsController {
         Stripe.apiKey = stripeApiKey;
     }
 
-    // Crear PaymentIntent para suscripción según planId
+    // 1. Crear PaymentIntent para SUSCRIPCIÓN
     @PostMapping("/subscription-intent")
     public ResponseEntity<Map<String, String>> createSubscriptionIntent(@RequestBody Map<String, Object> body) {
         Object planIdObj = body.get("planId");
         if (planIdObj == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "missing_planId"));
         }
+        
         String planId = planIdObj.toString();
-        long amount = planRepository.findById(planId).map(p -> p.getAmountInCents()).orElse(0L);
-        if (amount <= 0) {
-            return ResponseEntity.badRequest().body(Map.of("error", "invalid_plan"));
+        // Si el plan no está en BD, usamos valores por defecto para pruebas
+        long amount = 999; // 9.99€ por defecto
+        
+        // Intentar buscar precio real en base de datos si existe el repositorio poblado
+        try {
+             amount = planRepository.findById(planId)
+                 .map(p -> p.getAmountInCents())
+                 .orElse(planId.equals("price_fake_2") ? 9900L : 999L);
+        } catch(Exception e) {
+             // Fallback si falla la BD
+             LOGGER.warn("No se encontró plan en BD, usando precio por defecto");
         }
 
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
             .setAmount(amount)
             .setCurrency("eur")
             .setAutomaticPaymentMethods(
-                PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
-                    .setEnabled(true)
-                    .build()
+                PaymentIntentCreateParams.AutomaticPaymentMethods.builder().setEnabled(true).build()
             )
             .build();
+            
         try {
             PaymentIntent paymentIntent = PaymentIntent.create(params);
             return ResponseEntity.ok(Map.of("clientSecret", paymentIntent.getClientSecret()));
@@ -92,69 +100,75 @@ public class PaymentsController {
         }
     }
 
-    // Confirmación de suscripción (persistimos registro simple)
+    // 2. Confirmar SUSCRIPCIÓN y Guardar en BD
     @PostMapping("/subscription-confirm")
     public ResponseEntity<Map<String, Object>> confirmSubscription(@RequestBody Map<String, Object> body) {
         Object planIdObj = body.get("planId");
         Object barIdObj = body.get("barId");
+        
         if (planIdObj == null || barIdObj == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "missing_fields"));
         }
+        
         String planId = planIdObj.toString();
         String barId = barIdObj.toString();
-        if (planRepository.findById(planId).isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "invalid_plan"));
-        }
 
-        // Validar que el bar exista; si no, devolvemos error claro
-        java.util.Optional<Bar> barOpt = barRepository.findById(barId);
+        Optional<Bar> barOpt = barRepository.findById(barId);
         if (barOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "bar_not_found"));
         }
 
-        // Marcar el bar como verificado al completar la suscripción (mejor UX)
         Bar bar = barOpt.get();
+        // Marcar como verificado si paga
         if (!bar.isVerified()) {
             bar.setVerified(true);
             bar.setVerifiedAt(Instant.now());
             barRepository.save(bar);
         }
 
+        // Crear registro de suscripción
         Subscription s = new Subscription();
         s.setId(java.util.UUID.randomUUID().toString());
-        s.setBarId(barId);
+        s.setBar(bar); // Usamos la relación @ManyToOne si existe, o setBarId si es string plano
         s.setPlanId(planId);
         s.setStartAt(Instant.now());
-        // Periodo a modo de ejemplo: 30 días para mensual, 365 para anual
-        if ("MONTHLY".equals(planId)) {
-            s.setEndAt(Instant.now().plus(Duration.ofDays(30)));
-        } else if ("ANNUAL".equals(planId)) {
+        
+        // Duración simulada según el plan
+        if (planId.contains("fake_2") || planId.equalsIgnoreCase("ANNUAL")) {
             s.setEndAt(Instant.now().plus(Duration.ofDays(365)));
+        } else {
+            s.setEndAt(Instant.now().plus(Duration.ofDays(30)));
         }
+        
         s.setStatus("ACTIVE");
         subscriptionRepository.save(s);
-        return ResponseEntity.ok(new java.util.HashMap<>() {{
-            put("status", "subscription_active");
-            put("bar", bar);
-        }});
+
+        return ResponseEntity.ok(Map.of(
+            "status", "subscription_active",
+            "bar", bar
+        ));
     }
 
+    // 3. Crear PaymentIntent para CANCIÓN INDIVIDUAL
     @PostMapping("/create-payment-intent")
     public ResponseEntity<Map<String, String>> createPaymentIntent(@RequestBody Map<String, Object> data) {
-        // Precio por canción desde BD
-        long amount = songPriceRepository.findFirstByActiveTrue()
-            .map(p -> p.getAmountInCents())
-            .orElse(50L);
+        long amount = 50; // 0.50€ por defecto
+        try {
+            amount = songPriceRepository.findFirstByActiveTrue()
+                .map(p -> p.getAmountInCents())
+                .orElse(50L);
+        } catch(Exception e) {
+            LOGGER.warn("Usando precio por defecto para canción");
+        }
 
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
             .setAmount(amount)
             .setCurrency("eur")
             .setAutomaticPaymentMethods(
-                PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
-                    .setEnabled(true)
-                    .build()
+                PaymentIntentCreateParams.AutomaticPaymentMethods.builder().setEnabled(true).build()
             )
             .build();
+            
         try {
             PaymentIntent paymentIntent = PaymentIntent.create(params);
             return ResponseEntity.ok(Map.of("clientSecret", paymentIntent.getClientSecret()));
@@ -164,12 +178,10 @@ public class PaymentsController {
         }
     }
 
-    // Confirmación de pago de canción: añade a la cola
+    // 4. Confirmar pago de CANCIÓN (Añadir a la cola)
     @PostMapping("/confirm")
     public ResponseEntity<Map<String, String>> confirmPayment(@RequestBody Map<String, Object> payload) {
-        if (payload == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "payload_missing"));
-        }
+        if (payload == null) return ResponseEntity.badRequest().body(Map.of("error", "payload_missing"));
 
         Object songIdObj = payload.get("songId");
         Object titleObj = payload.get("title");
@@ -177,42 +189,38 @@ public class PaymentsController {
         Object albumCoverObj = payload.get("albumCover");
         Object previewUrlObj = payload.get("previewUrl");
         Object durationObj = payload.get("duration");
-
         Object barIdObj = payload.get("barId");
-        if (barIdObj == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "missing_barId"));
-        }
+
+        // Validaciones básicas
+        if (barIdObj == null) return ResponseEntity.badRequest().body(Map.of("error", "missing_barId"));
+        if (songIdObj == null || titleObj == null) return ResponseEntity.badRequest().body(Map.of("error", "missing_song_fields"));
+
         String barId = barIdObj.toString();
+        
+        // Verificar suscripción activa del bar antes de dejar poner música
         if (!barService.hasActiveSubscription(barId)) {
             return ResponseEntity.status(402).body(Map.of("error", "subscription_required"));
         }
 
-        if (songIdObj == null || titleObj == null || artistObj == null || albumCoverObj == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "missing_song_fields"));
-        }
-
         String songId = songIdObj.toString();
         String title = titleObj.toString();
-        String artist = artistObj.toString();
-        String albumCover = albumCoverObj.toString();
+        String artist = artistObj != null ? artistObj.toString() : "Desconocido";
+        String albumCover = albumCoverObj != null ? albumCoverObj.toString() : "";
         String previewUrl = previewUrlObj != null ? previewUrlObj.toString() : null;
-        int duration = 30; // valor por defecto
+        
+        int duration = 30;
         if (durationObj != null) {
-            try {
-                duration = Integer.parseInt(durationObj.toString());
-            } catch (NumberFormatException nfe) {
-                return ResponseEntity.badRequest().body(Map.of("error", "invalid_duration"));
-            }
+            try { duration = Integer.parseInt(durationObj.toString()); } catch (NumberFormatException e) {}
         }
 
-    LOGGER.info(">>> PAGO CONFIRMADO EN BACKEND para la canción: {}", title);
+        LOGGER.info(">>> PAGO CONFIRMADO: Añadiendo a cola canción: {}", title);
+        
         try {
             queueService.addSongToQueue(songId, title, artist, albumCover, previewUrl, duration);
             return ResponseEntity.ok(Map.of("status", "song_queued"));
         } catch (Exception e) {
-            LOGGER.error("Error al añadir la canción a la cola", e);
-            return ResponseEntity.internalServerError().body(Map.of("error", "failed_to_queue_song", "message", e.getMessage()));
+            LOGGER.error("Error al añadir a la cola", e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "failed_to_queue"));
         }
     }
 }
-

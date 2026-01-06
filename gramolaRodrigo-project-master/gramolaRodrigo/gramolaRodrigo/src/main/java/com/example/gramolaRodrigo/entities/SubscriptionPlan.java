@@ -3,18 +3,29 @@ package com.example.gramolaRodrigo.entities;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.Data;
 
 @Entity
 @Table(name = "subscription_plans")
-@Data
 public class SubscriptionPlan {
+
     @Id
-    private String id; // e.g. MONTHLY, ANNUAL
+    private String id; // Ej: "MONTHLY"
+    
+    private String name;
+    private Long amountInCents;
+    private Integer durationDays;
 
-    private String name; // display name
+    public SubscriptionPlan() {}
 
-    private long amountInCents; // price in cents
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    private boolean active;
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public Long getAmountInCents() { return amountInCents; }
+    public void setAmountInCents(Long amountInCents) { this.amountInCents = amountInCents; }
+
+    public Integer getDurationDays() { return durationDays; }
+    public void setDurationDays(Integer durationDays) { this.durationDays = durationDays; }
 }

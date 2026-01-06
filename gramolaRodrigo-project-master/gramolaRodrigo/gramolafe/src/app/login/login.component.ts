@@ -1,51 +1,50 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { UserService } from '../user.service';
-import { AuthService } from '../auth.service'; // <-- 1. IMPORTAR AuthService
+import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './login.component.html',
-  styleUrl: './login.component.css'
+  imports: [CommonModule, FormsModule, RouterLink],
+  templateUrl: './login.component.html'
 })
 export class LoginComponent {
-  // Variables para el formulario
-  email?: string;
-  pwd?: string;
-  message?: string;
+  email: string = '';
+  password: string = '';
+  isLoading = false;
 
-  // 2. INYECTAR AuthService
-  constructor(private userService: UserService, private authService: AuthService) { }
+  constructor(private authService: AuthService, private router: Router) {}
 
-  iniciarSesion() {
-    this.message = '';
-    const credentials = {
-      email: this.email,
-      pwd: this.pwd
-    };
+  login() {
+    if (!this.email || !this.password) {
+      alert('Completa todos los campos');
+      return;
+    }
 
-    this.userService.login(credentials).subscribe({
-      next: (response: any) => {
-        // 3. EN LUGAR DE MOSTRAR UN MENSAJE, LLAMAMOS AL AuthService
-        this.authService.login(response);
-        // El mensaje de bienvenida ahora lo mostrará el componente principal
+    this.isLoading = true;
+
+    this.authService.login({ email: this.email, pwd: this.password }).subscribe({
+      next: (user: any) => {
+        console.log('Login correcto, verificando suscripción...');
+        
+        // --- AQUÍ ESTÁ LA CLAVE DEL FLUJO ---
+        this.authService.checkSubscriptionStatus().subscribe(isActive => {
+          this.isLoading = false;
+          if (isActive) {
+            // Si ya pagó, va a buscar música
+            this.router.navigate(['/search']);
+          } else {
+            // Si NO ha pagado, va a suscribirse obligatoriamente
+            this.router.navigate(['/subscribe']);
+          }
+        });
       },
-      error: (error: any) => {
-        // --- CÓDIGO CORREGIDO ---
-        // Extraemos el mensaje de error real
-        if (error?.error && typeof error.error === 'string') {
-          this.message = `Error: ${error.error}`;
-        } else if (error?.error && error.error.message) {
-          this.message = `Error: ${error.error.message}`;
-        } else if (error?.message) {
-          this.message = `Error: ${error.message}`;
-        } else {
-          this.message = 'Ha ocurrido un error al iniciar sesión.';
-        }
-        console.error('Error en el login', error);
+      error: (err: any) => {
+        this.isLoading = false;
+        console.error(err);
+        alert('Credenciales incorrectas');
       }
     });
   }

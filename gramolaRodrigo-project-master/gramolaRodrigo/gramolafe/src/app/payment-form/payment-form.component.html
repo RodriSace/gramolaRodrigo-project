@@ -1,10 +1,32 @@
-<div>
-  <h4>Introduce los datos de tu tarjeta</h4>
-  <div id="song-payment-element"></div>
+<div class="modal-overlay">
+  <div class="payment-card">
+    <h3 style="margin-top: 0; margin-bottom: 1rem;">Confirmar Pago</h3>
+    
+    <div style="margin-bottom: 1.5rem;">
+      <p style="margin-bottom: 5px; color: #aaa;">Vas a añadir a la cola:</p>
+      <p class="song-info">{{ songTitle }}</p>
+      <p class="price">Total: {{ price }} €</p>
+    </div>
 
-  <button (click)="handleSubmit()">Pagar</button>
+    <div class="form-group">
+      <label>Número de Tarjeta</label>
+      <input type="text" [(ngModel)]="cardNumber" placeholder="0000 0000 0000 0000" class="input-glass">
+    </div>
 
-  <div *ngIf="message" id="payment-message">
-    {{ message }}
+    <div class="row">
+      <div class="form-group half">
+        <label>Caducidad</label>
+        <input type="text" [(ngModel)]="expiry" placeholder="MM/YY" class="input-glass">
+      </div>
+      <div class="form-group half">
+        <label>CVC</label>
+        <input type="text" [(ngModel)]="cvc" placeholder="123" class="input-glass">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-cancel" (click)="onCancel()">Cancelar</button>
+      <button class="btn-pay" (click)="onPay()">Pagar</button>
+    </div>
   </div>
 </div>
