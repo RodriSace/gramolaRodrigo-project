@@ -86,9 +86,7 @@ public class PaymentsController {
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
             .setAmount(amount)
             .setCurrency("eur")
-            .setAutomaticPaymentMethods(
-                PaymentIntentCreateParams.AutomaticPaymentMethods.builder().setEnabled(true).build()
-            )
+            .addPaymentMethodType("card") // Solo tarjeta de crédito/débito
             .build();
             
         try {
@@ -164,11 +162,9 @@ public class PaymentsController {
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
             .setAmount(amount)
             .setCurrency("eur")
-            .setAutomaticPaymentMethods(
-                PaymentIntentCreateParams.AutomaticPaymentMethods.builder().setEnabled(true).build()
-            )
+            .addPaymentMethodType("card") // Solo tarjeta de crédito/débito
             .build();
-            
+
         try {
             PaymentIntent paymentIntent = PaymentIntent.create(params);
             return ResponseEntity.ok(Map.of("clientSecret", paymentIntent.getClientSecret()));

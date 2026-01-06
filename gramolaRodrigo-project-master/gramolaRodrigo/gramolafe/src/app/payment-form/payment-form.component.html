@@ -1,32 +1,23 @@
-<div class="modal-overlay">
+<div class="modal-overlay" [class.loading]="loading">
   <div class="payment-card">
-    <h3 style="margin-top: 0; margin-bottom: 1rem;">Confirmar Pago</h3>
-    
-    <div style="margin-bottom: 1.5rem;">
-      <p style="margin-bottom: 5px; color: #aaa;">Vas a añadir a la cola:</p>
-      <p class="song-info">{{ songTitle }}</p>
-      <p class="price">Total: {{ price }} €</p>
-    </div>
+    <h3>Pagar Canción</h3>
 
-    <div class="form-group">
-      <label>Número de Tarjeta</label>
-      <input type="text" [(ngModel)]="cardNumber" placeholder="0000 0000 0000 0000" class="input-glass">
-    </div>
+    <div class="song-info">{{ songTitle }}</div>
+    <div class="price">{{ price | number:'1.2-2' }}€</div>
 
-    <div class="row">
-      <div class="form-group half">
-        <label>Caducidad</label>
-        <input type="text" [(ngModel)]="expiry" placeholder="MM/YY" class="input-glass">
-      </div>
-      <div class="form-group half">
-        <label>CVC</label>
-        <input type="text" [(ngModel)]="cvc" placeholder="123" class="input-glass">
-      </div>
+    <!-- Elemento de pago de Stripe -->
+    <div id="payment-element"></div>
+
+    <!-- Mensaje de error/éxito -->
+    <div *ngIf="message" [class]="message.includes('Error') ? 'error' : 'success'">
+      {{ message }}
     </div>
 
     <div class="actions">
-      <button class="btn-cancel" (click)="onCancel()">Cancelar</button>
-      <button class="btn-pay" (click)="onPay()">Pagar</button>
+      <button class="btn-cancel" (click)="onCancel()" [disabled]="loading">Cancelar</button>
+      <button class="btn-pay" (click)="onPay()" [disabled]="loading || !clientSecret">
+        {{ loading ? 'Procesando...' : 'Pagar' }}
+      </button>
     </div>
   </div>
 </div>

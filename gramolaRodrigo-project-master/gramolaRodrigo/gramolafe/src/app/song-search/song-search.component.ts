@@ -18,6 +18,7 @@ export class SongSearchComponent implements OnInit {
   query: string = ''; // Antes searchTerm
   results: any[] = [];
   isLoading = false;
+  searchTimeout: any;
 
   // Variables para el modal de pago
   selectedSongForPayment: any = null;
@@ -33,22 +34,59 @@ export class SongSearchComponent implements OnInit {
     });
   }
 
+  onQueryChange() {
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
+    this.searchTimeout = setTimeout(() => {
+      this.performSearch();
+    }, 300); // Debounce 300ms
+  }
+
   // Método de búsqueda (vinculado al botón "Buscar")
-  search() {
-    if (!this.query.trim()) return;
-    
+  performSearch() {
+    const trimmedQuery = this.query.trim();
+    if (!trimmedQuery) {
+      this.results = [];
+      return;
+    }
+
+    // Client-side validation: require at least 3 characters
+    if (trimmedQuery.length < 3) {
+      this.results = [];
+      return;
+    }
+
     this.isLoading = true;
     this.results = []; // Limpiar resultados anteriores
-    
+
     // Llamada al endpoint de búsqueda (ajusta la ruta si es diferente en tu backend)
-    this.http.get<any[]>(`${API_URL}/songs/search?q=${this.query}`).subscribe({
-      next: (data) => {
-        this.results = data;
+    this.http.get(`${API_URL}/songs/search?q=${trimmedQuery}`, { responseType: 'text' }).subscribe({
+      next: (data: string) => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.error) {
+            console.error('Error from backend:', parsed.error);
+            alert(parsed.error);
+            this.results = [];
+          } else {
+            this.results = (parsed.data || []).map((song: any) => ({
+              ...song,
+              artist: song.artist.name,
+              albumCover: song.album.cover
+            }));
+          }
+        } catch (e) {
+          console.error('Error parsing response:', e);
+          this.results = [];
+        }
         this.isLoading = false;
       },
       error: (err) => {
         console.error('Error buscando canciones:', err);
         this.isLoading = false;
+        this.results = [];
+        alert('Error al buscar canciones. Inténtalo de nuevo.');
       }
     });
   }
@@ -63,23 +101,12 @@ export class SongSearchComponent implements OnInit {
     this.selectedSongForPayment = null;
   }
 
-  // 3. Confirmar Pago: El usuario pulsa "Pagar" en el modal
-  processPaymentSuccess() {
+  // 3. Pago exitoso: Stripe ha procesado el pago y añadido a la cola
+  onPaymentSuccess() {
     const song = this.selectedSongForPayment;
-    
-    // Llamada al backend para añadir a la cola
-    this.http.post(`${API_URL}/queue/add`, song).subscribe({
-      next: () => {
-        alert(`¡Pago aceptado! "${song.title}" añadida a la cola.`);
-        this.selectedSongForPayment = null; // Cerrar modal
-        // Opcional: Redirigir a la vista de cola
-        // this.router.navigate(['/queue']);
-      },
-      error: (err) => {
-        console.error('Error añadiendo a la cola:', err);
-        const msg = err.error?.message || 'Error al procesar la solicitud.';
-        alert(msg);
-      }
-    });
+    alert(`¡Pago aceptado! "${song.title}" añadida a la cola.`);
+    this.selectedSongForPayment = null; // Cerrar modal
+    // Opcional: Redirigir a la vista de cola
+    // this.router.navigate(['/queue']);
   }
 }

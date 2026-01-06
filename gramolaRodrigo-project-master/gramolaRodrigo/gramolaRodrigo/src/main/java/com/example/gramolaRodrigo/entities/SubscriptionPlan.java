@@ -14,6 +14,7 @@ public class SubscriptionPlan {
     private String name;
     private Long amountInCents;
     private Integer durationDays;
+    private boolean active;
 
     public SubscriptionPlan() {}
 
@@ -28,4 +29,7 @@ public class SubscriptionPlan {
 
     public Integer getDurationDays() { return durationDays; }
     public void setDurationDays(Integer durationDays) { this.durationDays = durationDays; }
+
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
 }

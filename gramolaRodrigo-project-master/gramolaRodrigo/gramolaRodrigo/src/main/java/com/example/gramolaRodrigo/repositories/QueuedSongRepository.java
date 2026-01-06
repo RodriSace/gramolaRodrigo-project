@@ -10,9 +10,12 @@ import com.example.gramolaRodrigo.entities.QueuedSong;
 
 @Repository
 public interface QueuedSongRepository extends JpaRepository<QueuedSong, Long> {
-	// Busca todas las canciones que no han sonado, ordenadas por ID
-	List<QueuedSong> findByHasPlayedFalseOrderByIdAsc();
+	// Busca todas las canciones que no han sonado, ordenadas por posición
+	List<QueuedSong> findByHasPlayedFalseOrderByPositionAsc();
 
-	// Busca solo la primera canción que no ha sonado, ordenada por ID
-	Optional<QueuedSong> findFirstByHasPlayedFalseOrderByIdAsc();
+	// Busca solo la primera canción que no ha sonado, ordenada por posición
+	Optional<QueuedSong> findFirstByHasPlayedFalseOrderByPositionAsc();
+
+	// Busca por songId y hasPlayed false
+	Optional<QueuedSong> findBySongIdAndHasPlayedFalse(String songId);
 }

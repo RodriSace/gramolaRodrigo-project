@@ -100,10 +100,14 @@ export class SubscribeComponent implements OnInit {
         // Configuración visual de Stripe (Modo Oscuro para que cuadre con tu app)
         const appearance = { theme: 'night', labels: 'floating' };
         const options = { clientSecret: this.clientSecret, appearance };
-        
+
         this.elements = this.stripe.elements(options);
         const paymentElement = this.elements.create('payment');
-        paymentElement.mount('#payment-element');
+
+        // Esperar a que el DOM se actualice antes de montar
+        setTimeout(() => {
+          paymentElement.mount('#payment-element');
+        }, 100);
         
         this.loading = false;
       },

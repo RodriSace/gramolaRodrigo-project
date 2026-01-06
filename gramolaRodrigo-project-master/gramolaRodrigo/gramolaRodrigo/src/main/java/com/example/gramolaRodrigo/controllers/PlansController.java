@@ -7,7 +7,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.gramolaRodrigo.entities.SongPrice;
 import com.example.gramolaRodrigo.entities.SubscriptionPlan;
+import com.example.gramolaRodrigo.repositories.SongPriceRepository;
 import com.example.gramolaRodrigo.repositories.SubscriptionPlanRepository;
 
 import jakarta.annotation.PostConstruct;
@@ -17,9 +19,11 @@ import jakarta.annotation.PostConstruct;
 public class PlansController {
 
     private final SubscriptionPlanRepository planRepository;
+    private final SongPriceRepository songPriceRepository;
 
-    public PlansController(SubscriptionPlanRepository planRepository) {
+    public PlansController(SubscriptionPlanRepository planRepository, SongPriceRepository songPriceRepository) {
         this.planRepository = planRepository;
+        this.songPriceRepository = songPriceRepository;
     }
 
     // Inicializar planes si no existen al arrancar
@@ -43,13 +47,57 @@ public class PlansController {
             planRepository.save(p2);
 
             System.out.println(">>> Planes de suscripción inicializados por defecto.");
+        } else {
+            // Asegurar que todos los planes existentes estén activos
+            List<SubscriptionPlan> existingPlans = planRepository.findAll();
+            for (SubscriptionPlan plan : existingPlans) {
+                if (!plan.isActive()) {
+                    plan.setActive(true);
+                    planRepository.save(plan);
+                    System.out.println(">>> Plan " + plan.getId() + " activado.");
+                }
+            }
+        }
+
+        // Inicializar precio de canción si no existe
+        if (songPriceRepository.count() == 0) {
+            SongPrice songPrice = new SongPrice();
+            songPrice.setAmountInCents(99L); // 0.99€
+            songPrice.setActive(true);
+            songPriceRepository.save(songPrice);
+            System.out.println(">>> Precio de canción inicializado por defecto.");
+        } else {
+            // Asegurar que haya al menos uno activo
+            songPriceRepository.findFirstByActiveTrue().orElseGet(() -> {
+                SongPrice songPrice = new SongPrice();
+                songPrice.setAmountInCents(99L);
+                songPrice.setActive(true);
+                return songPriceRepository.save(songPrice);
+            });
         }
     }
 
     @GetMapping
     public ResponseEntity<List<SubscriptionPlan>> getAllPlans() {
-        return ResponseEntity.ok(planRepository.findAll().stream()
+        List<SubscriptionPlan> plans = planRepository.findAll().stream()
             .filter(SubscriptionPlan::isActive)
-            .toList());
+            .toList();
+
+        // Si no hay planes activos, inicializarlos
+        if (plans.isEmpty()) {
+            initPlans();
+            plans = planRepository.findAll().stream()
+                .filter(SubscriptionPlan::isActive)
+                .toList();
+        }
+
+        return ResponseEntity.ok(plans);
+    }
+
+    @GetMapping("/song-price")
+    public ResponseEntity<SongPrice> getSongPrice() {
+        return songPriceRepository.findFirstByActiveTrue()
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
     }
 }

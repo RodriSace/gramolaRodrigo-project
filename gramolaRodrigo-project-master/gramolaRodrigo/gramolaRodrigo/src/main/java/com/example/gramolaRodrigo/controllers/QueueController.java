@@ -1,10 +1,14 @@
 package com.example.gramolaRodrigo.controllers;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping; // <-- AÑADIR
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +21,7 @@ import com.example.gramolaRodrigo.services.QueueService;
 @RequestMapping("/queue")
 public class QueueController {
 
+    private static final Logger logger = LoggerFactory.getLogger(QueueController.class);
     private final QueueService queueService;
 
     public QueueController(QueueService queueService) {
@@ -24,55 +29,68 @@ public class QueueController {
     }
 
     @GetMapping
-    public ResponseEntity<List<QueuedSong>> getQueue() {
-        List<QueuedSong> queue = queueService.getQueue();
-        return ResponseEntity.ok(queue);
-    }
-
-    // 👇 ENDPOINT NUEVO 👇
-    @PostMapping("/next")
-    public ResponseEntity<?> playNextSong() {
-        return ResponseEntity.ok(queueService.playNextSong());
-    }
-
-    // Estado global de pause/play
-    @GetMapping("/playback-state")
-    public ResponseEntity<?> getPlaybackState() {
-        return ResponseEntity.ok(java.util.Map.of("paused", queueService.isGloballyPaused()));
-    }
-
-    @PostMapping("/toggle-playback")
-    public ResponseEntity<?> togglePlayback() {
-        queueService.toggleGlobalPause();
-        return ResponseEntity.ok(java.util.Map.of("paused", queueService.isGloballyPaused()));
-    }
-
-    // Guardar posición de reproducción (se llama desde el cliente onbeforeunload)
-    @PostMapping("/save-position")
-    public ResponseEntity<?> savePlaybackPosition(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<List<Map<String, Object>>> getQueue() {
         try {
-            String songId = (String) payload.getOrDefault("songId", null);
-            double currentTime = 0.0;
-            Object t = payload.get("currentTime");
-            if (t instanceof Number) {
-                currentTime = ((Number) t).doubleValue();
-            } else if (t instanceof String) {
-                currentTime = Double.parseDouble((String) t);
+            List<QueuedSong> songs = queueService.getQueue();
+            List<Map<String, Object>> response = new ArrayList<>();
+
+            if (songs != null) {
+                for (QueuedSong s : songs) {
+                    // Protección contra Nulos: Si un elemento de la lista es null, lo saltamos
+                    if (s != null) {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("id", s.getId());
+                        map.put("songId", s.getSongId());
+                        map.put("title", s.getTitle());
+                        map.put("artist", s.getArtist());
+                        map.put("albumCover", s.getAlbumCover());
+                        map.put("previewUrl", s.getPreviewUrl());
+                        map.put("duration", s.getDuration());
+                        // Si 'position' es null o 0, ponemos 0
+                        map.put("position", s.getPosition());
+                        
+                        response.add(map);
+                    }
+                }
             }
-            boolean paused = Boolean.parseBoolean(String.valueOf(payload.getOrDefault("paused", "false")));
-            queueService.savePlaybackPosition(songId, currentTime, paused);
-            return ResponseEntity.ok(Map.of("saved", true));
-        } catch (Exception ex) {
-            return ResponseEntity.status(500).body(Map.of("error", ex.getMessage()));
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("ERROR CRÍTICO EN GET /queue: ", e);
+            // Devolver lista vacía en lugar de explotar con Error 500
+            return ResponseEntity.ok(new ArrayList<>());
         }
     }
 
-    @GetMapping("/load-position")
-    public ResponseEntity<?> loadPlaybackPosition() {
-        return ResponseEntity.ok(queueService.loadPlaybackState().map(s -> java.util.Map.of(
-                "songId", s.getCurrentSongId(),
-                "currentTime", s.getCurrentTimeSeconds(),
-                "paused", s.isPaused()
-        )).orElse(java.util.Map.of()));
+    @PostMapping("/add")
+    public void addSong(@RequestBody QueuedSong song) {
+        try {
+            queueService.addSongToQueue(song.getSongId(), song.getTitle(), song.getArtist(), 
+                                      song.getAlbumCover(), song.getPreviewUrl(), song.getDuration());
+        } catch (Exception e) {
+            logger.error("Error al añadir canción: ", e);
+        }
+    }
+
+    @PostMapping("/next")
+    public ResponseEntity<Map<String, Object>> playNext() {
+        try {
+            return queueService.playNextSong()
+                .map(s -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", s.getId());
+                    map.put("songId", s.getSongId());
+                    map.put("title", s.getTitle());
+                    map.put("artist", s.getArtist());
+                    map.put("albumCover", s.getAlbumCover());
+                    map.put("previewUrl", s.getPreviewUrl());
+                    return ResponseEntity.ok(map);
+                })
+                .orElse(ResponseEntity.noContent().build());
+        } catch (Exception e) {
+            logger.error("Error en /next: ", e);
+            return ResponseEntity.noContent().build();
+        }
     }
 }

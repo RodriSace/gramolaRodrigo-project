@@ -24,4 +24,5 @@ public class QueuedSong {
     @Column(length = 2048)
     private String previewUrl; // URL al preview (30s) de Deezer
     private int duration; // duración en segundos (según Deezer)
+    private int position; // posición en la cola para ordenar correctamente
 }

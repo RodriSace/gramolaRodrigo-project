@@ -214,6 +214,7 @@ public class BarService {
         return res;
     }
 
+    @SuppressWarnings("null")
     public void resendEmailVerification(String email) {
         barRepository.findByEmail(email).ifPresent(bar -> {
             if (bar.isVerified()) return;
