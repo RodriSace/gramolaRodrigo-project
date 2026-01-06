@@ -1,7 +1,6 @@
 package com.example.gramolaRodrigo.controllers;
 
 import java.util.List;
-import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +31,7 @@ public class PlansController {
             p1.setName("Plan Mensual");
             p1.setAmountInCents(999L); // 9.99€
             p1.setDurationDays(30);
+            p1.setActive(true);
             planRepository.save(p1);
 
             SubscriptionPlan p2 = new SubscriptionPlan();
@@ -39,14 +39,17 @@ public class PlansController {
             p2.setName("Plan Anual (Ahorro)");
             p2.setAmountInCents(9900L); // 99.00€
             p2.setDurationDays(365);
+            p2.setActive(true);
             planRepository.save(p2);
-            
+
             System.out.println(">>> Planes de suscripción inicializados por defecto.");
         }
     }
 
     @GetMapping
     public ResponseEntity<List<SubscriptionPlan>> getAllPlans() {
-        return ResponseEntity.ok(planRepository.findAll());
+        return ResponseEntity.ok(planRepository.findAll().stream()
+            .filter(SubscriptionPlan::isActive)
+            .toList());
     }
 }

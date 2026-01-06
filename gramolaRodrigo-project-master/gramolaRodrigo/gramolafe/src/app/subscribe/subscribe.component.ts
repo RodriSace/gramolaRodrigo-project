@@ -48,16 +48,26 @@ export class SubscribeComponent implements OnInit {
     // 2. Obtener planes del backend
     this.http.get<any[]>(`${API_URL}/plans`).subscribe({
       next: (d) => {
+        console.log('Planes obtenidos del backend:', d);
         this.plans = d;
-        // Si no hay planes en BD, creamos uno ficticio para que se vea algo en pantalla (opcional)
+        // Si no hay planes en BD, creamos uno ficticio para que se vea algo en pantalla
         if (this.plans.length === 0) {
+          console.log('No hay planes en BD, usando ficticios');
           this.plans = [
-            { id: 'price_fake_1', name: 'Plan Mensual Básico', amountInCents: 999 },
-            { id: 'price_fake_2', name: 'Plan Anual Pro', amountInCents: 9900 }
+            { id: 'MONTHLY', name: 'Plan Mensual', amountInCents: 999 },
+            { id: 'ANNUAL', name: 'Plan Anual (Ahorro)', amountInCents: 9900 }
           ];
         }
       },
-      error: () => this.message = 'Error: No se pudieron cargar los planes.'
+      error: (err) => {
+        console.error('Error cargando planes:', err);
+        this.message = 'Error: No se pudieron cargar los planes. Usando planes de prueba.';
+        // Mostrar planes ficticios en caso de error
+        this.plans = [
+          { id: 'MONTHLY', name: 'Plan Mensual', amountInCents: 999 },
+          { id: 'ANNUAL', name: 'Plan Anual (Ahorro)', amountInCents: 9900 }
+        ];
+      }
     });
 
     // 3. Comprobar si ya está suscrito
