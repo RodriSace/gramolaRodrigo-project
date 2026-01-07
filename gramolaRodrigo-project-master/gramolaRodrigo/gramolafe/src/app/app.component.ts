@@ -12,13 +12,31 @@ import { AuthService } from './auth.service';
 export class AppComponent implements OnInit {
   title = 'Gramola Rodrigo';
   currentUser: any = null;
+  isSubscribed: boolean = false;
 
   constructor(private authService: AuthService, private router: Router) {}
 
   ngOnInit() {
     this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
+      if (user) {
+        this.checkSubscriptionStatus();
+      } else {
+        this.isSubscribed = false;
+      }
     });
+  }
+
+  private checkSubscriptionStatus() {
+    this.authService.checkSubscriptionStatus().subscribe(status => {
+      this.isSubscribed = status;
+    });
+  }
+
+  onPlanClick(event: Event) {
+    if (this.isSubscribed) {
+      event.preventDefault();
+    }
   }
 
   logout() {

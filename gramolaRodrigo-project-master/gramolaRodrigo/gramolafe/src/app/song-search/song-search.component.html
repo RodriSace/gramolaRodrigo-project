@@ -43,3 +43,10 @@
   </app-payment-form>
 
 </div>
+
+<div *ngIf="showNotification" class="toast-notification">
+  <div class="toast-content">
+    <span class="icon">✅</span>
+    <span>{{ notificationMessage }}</span>
+  </div>
+</div>

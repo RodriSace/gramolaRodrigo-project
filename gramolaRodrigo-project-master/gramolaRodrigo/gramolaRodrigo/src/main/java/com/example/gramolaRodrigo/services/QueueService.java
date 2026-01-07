@@ -50,17 +50,29 @@ public class QueueService {
 
     private void initializeRealDeezerPlaylist() {
         List<String> trackIds = List.of(
-            "124895572", // Shape of You
-            "809485762", // Blinding Lights
-            "1420796",   // Viva la Vida
-            "1109731"    // Levitating
+            "124895572", // Shape of You - Ed Sheeran
+            "809485762", // Blinding Lights - The Weeknd
+            "1420796",   // Viva la Vida - Coldplay
+            "1109731",   // Levitating - Dua Lipa
+            "3135556",   // Someone Like You - Adele
+            "1109730",   // Good 4 U - Olivia Rodrigo
+            "3135557",   // Rolling in the Deep - Adele
+            "1109729",   // Watermelon Sugar - Harry Styles
+            "3135558",   // Don't Start Now - Dua Lipa
+            "1109728",   // As It Was - Harry Styles
+            "3135559",   // Heat Waves - Glass Animals
+            "1109727",   // Stay - The Kid Laroi & Justin Bieber
+            "1109732",   // Peaches - Justin Bieber ft. Daniel Caesar & Giveon
+            "3135560",   // Bad Habit - Steve Lacy
+            "1109733",   // Permission to Dance - BTS
+            "3135561"    // Industry Baby - Lil Nas X & Jack Harlow
         );
 
         int index = 0;
         for (String id : trackIds) {
             try {
                 fetchFromDeezerAndSave(id, index++);
-                Thread.sleep(100); 
+                Thread.sleep(100);
             } catch (Exception e) {
                 LOGGER.warn("Error cargando canción {}: {}", id, e.getMessage());
             }
@@ -71,38 +83,51 @@ public class QueueService {
         URL url = new URL("https://api.deezer.com/track/" + id);
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
-        
-        if (con.getResponseCode() != 200) return;
+
+        if (con.getResponseCode() != 200) {
+            LOGGER.warn("Failed to fetch track {}: HTTP {}", id, con.getResponseCode());
+            return;
+        }
 
         ObjectMapper mapper = new ObjectMapper();
         Map<?, ?> trackData = mapper.readValue(con.getInputStream(), Map.class);
-        
-        if (trackData == null || trackData.containsKey("error")) return;
+
+        if (trackData == null || trackData.containsKey("error")) {
+            LOGGER.warn("Invalid track data for {}: {}", id, trackData);
+            return;
+        }
+
+        // Check if preview URL is available
+        if (!trackData.containsKey("preview") || trackData.get("preview") == null) {
+            LOGGER.warn("No preview URL available for track {}", id);
+            return;
+        }
 
         PlaylistSong song = new PlaylistSong();
         song.setSongId(id);
         song.setTitle((String) trackData.get("title"));
-        
+
         Map<?, ?> artistObj = (Map<?, ?>) trackData.get("artist");
         song.setArtist((String) artistObj.get("name"));
-        
+
         Map<?, ?> albumObj = (Map<?, ?>) trackData.get("album");
         song.setAlbumCover((String) albumObj.get("cover_medium"));
-        
+
         // NULL para usar el resolver
-        song.setPreviewUrl(null); 
-        song.setDuration(30); 
+        song.setPreviewUrl(null);
+        song.setDuration(30);
         song.setPlaylistIndex(index);
-        
+
         playlistSongRepository.save(song);
+        LOGGER.info("Successfully saved track: {} - {}", song.getTitle(), song.getArtist());
     }
 
     // --- API Methods ---
 
     public List<QueuedSong> getQueue() {
         List<QueuedSong> paidQueue = queuedSongRepository.findByHasPlayedFalseOrderByPositionAsc();
-        if (!paidQueue.isEmpty()) return paidQueue; 
-        
+        if (!paidQueue.isEmpty()) return paidQueue;
+
         return List.of(getCurrentBackgroundSongAsQueued());
     }
 
@@ -110,7 +135,9 @@ public class QueueService {
         Optional<QueuedSong> queueSong = queuedSongRepository.findFirstByHasPlayedFalseOrderByPositionAsc();
         if (queueSong.isPresent()) {
             QueuedSong song = queueSong.get();
-            queuedSongRepository.delete(song); 
+            queuedSongRepository.delete(song);
+            // After playing a paid song, advance the playlist to maintain sequential flow
+            advanceToNextPlaylistSong();
             return Optional.of(song);
         }
         return advanceToNextPlaylistSong().map(this::convertPlaylistSongToQueued);

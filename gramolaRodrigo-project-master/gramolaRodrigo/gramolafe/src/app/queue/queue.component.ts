@@ -101,12 +101,20 @@ export class QueueComponent implements OnInit, OnDestroy, AfterViewInit {
         this.setAudioSrcAndPlay(song.previewUrl);
     } else {
         fetch(`${API_URL}/api/deezer/url/${song.songId}`)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                return res.json();
+            })
             .then(data => {
                 if (data.url) this.setAudioSrcAndPlay(data.url);
                 else throw new Error("URL vacía");
             })
-            .catch(() => this.handleTrackEnd());
+            .catch((error) => {
+                console.error('Error resolviendo URL:', error);
+                this.handleTrackEnd();
+            });
     }
   }
 

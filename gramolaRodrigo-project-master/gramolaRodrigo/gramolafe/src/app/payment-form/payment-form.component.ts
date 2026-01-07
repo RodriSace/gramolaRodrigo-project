@@ -62,6 +62,8 @@ export class PaymentFormComponent implements OnInit, OnDestroy {
   loading = false;
   message = '';
 
+
+
   constructor(private http: HttpClient, private auth: AuthService) {}
 
   ngOnInit(): void {
@@ -194,7 +196,8 @@ export class PaymentFormComponent implements OnInit, OnDestroy {
         billing_details: {
           name: 'Cliente' // Puedes obtener esto del formulario si es necesario
         }
-      }
+      },
+      return_url: 'http://localhost:4200/payment-success' // URL de retorno para evitar nueva pestaña
     });
 
     if (error) {
@@ -234,11 +237,12 @@ export class PaymentFormComponent implements OnInit, OnDestroy {
 
     this.http.post(`${API_URL}/payments/confirm`, payload).subscribe({
       next: (res: any) => {
-        console.log('Pago confirmado exitosamente:', res);
-        this.message = '¡Pago aceptado! Canción añadida a la cola.';
+        console.log('Pago confirmado exitosamente');
         this.loading = false;
+
+        // Simplemente avisamos al padre que ha sido un éxito
+        // El padre se encargará de cerrar el modal y mostrar la notificación
         this.success.emit();
-        setTimeout(() => this.cancel.emit(), 2000); // Cerrar modal tras 2 segundos
       },
       error: (err) => {
         console.error('Error confirmando pago:', err);

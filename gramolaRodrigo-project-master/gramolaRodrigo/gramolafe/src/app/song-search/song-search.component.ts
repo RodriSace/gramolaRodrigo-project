@@ -11,7 +11,7 @@ import { Router } from '@angular/router';
   standalone: true,
   imports: [CommonModule, FormsModule, PaymentFormComponent],
   templateUrl: './song-search.component.html',
-  // Quitamos styleUrl si no tienes un CSS específico, o déjalo si ya existe
+  styleUrl: './song-search.component.css'
 })
 export class SongSearchComponent implements OnInit {
   // Variables de búsqueda
@@ -23,6 +23,10 @@ export class SongSearchComponent implements OnInit {
   // Variables para el modal de pago
   selectedSongForPayment: any = null;
   priceInCents: number = 99; // Precio por defecto (0.99€)
+
+  // Variables para la notificación
+  showNotification: boolean = false;
+  notificationMessage: string = '';
 
   constructor(private http: HttpClient, private router: Router) {}
 
@@ -104,8 +108,15 @@ export class SongSearchComponent implements OnInit {
   // 3. Pago exitoso: Stripe ha procesado el pago y añadido a la cola
   onPaymentSuccess() {
     const song = this.selectedSongForPayment;
-    alert(`¡Pago aceptado! "${song.title}" añadida a la cola.`);
+    this.notificationMessage = `Pagado con éxito. "${song.title}" añadida a la cola.`;
+    this.showNotification = true;
     this.selectedSongForPayment = null; // Cerrar modal
+
+    // Ocultar notificación después de 4 segundos
+    setTimeout(() => {
+      this.showNotification = false;
+    }, 4000);
+
     // Opcional: Redirigir a la vista de cola
     // this.router.navigate(['/queue']);
   }

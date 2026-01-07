@@ -29,17 +29,17 @@ public class DeezerController {
             String apiUrl = "https://api.deezer.com/track/" + id;
             ObjectMapper mapper = new ObjectMapper();
             Map<?, ?> track = mapper.readValue(new URL(apiUrl), Map.class);
-            
+
             if (track == null || !track.containsKey("preview")) {
                 return ResponseEntity.notFound().build();
             }
 
             String previewUrl = track.get("preview").toString();
-            
+
             // 2. REDIRECCIÓN (302): "Navegador, ve tú a por el audio a esta URL"
             // Esto evita que tu servidor Java se sature y explote (Error 500)
             logger.info("Redirigiendo audio ID {} a: {}", id, previewUrl);
-            
+
             return ResponseEntity.status(HttpStatus.FOUND) // 302 Found
                     .location(URI.create(previewUrl))
                     .header(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
@@ -48,6 +48,29 @@ public class DeezerController {
         } catch (Exception e) {
             logger.error("Error en DeezerController: {}", e.getMessage());
             // Si falla, devolvemos 404 en vez de 500 para no romper el cliente
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/url/{id}")
+    public ResponseEntity<Map<String, String>> getPreviewUrl(@PathVariable String id) {
+        try {
+            // Preguntar a Deezer dónde está el audio
+            String apiUrl = "https://api.deezer.com/track/" + id;
+            ObjectMapper mapper = new ObjectMapper();
+            Map<?, ?> track = mapper.readValue(new URL(apiUrl), Map.class);
+
+            if (track == null || !track.containsKey("preview")) {
+                return ResponseEntity.notFound().build();
+            }
+
+            String previewUrl = track.get("preview").toString();
+            logger.info("Devolviendo URL de audio ID {}: {}", id, previewUrl);
+
+            return ResponseEntity.ok(Map.of("url", previewUrl));
+
+        } catch (Exception e) {
+            logger.error("Error obteniendo URL de DeezerController: {}", e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }

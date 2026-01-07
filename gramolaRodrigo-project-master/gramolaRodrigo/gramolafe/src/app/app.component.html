@@ -7,7 +7,7 @@
       <a routerLink="/dashboard" routerLinkActive="active">
         <span class="material-icons">dashboard</span> Panel
       </a>
-      <a routerLink="/subscribe" routerLinkActive="active">
+      <a routerLink="/subscribe" routerLinkActive="active" *ngIf="!isSubscribed" (click)="onPlanClick($event)">
         <span class="material-icons">star</span> Plan
       </a>
       <button class="btn-secondary btn-sm" (click)="logout()">
