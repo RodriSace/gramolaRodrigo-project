@@ -13,6 +13,7 @@ interface QueuedSong {
   previewUrl: string;
   duration?: number;
   position?: number;
+  timestamp?: number;
 }
 
 @Component({
@@ -90,32 +91,27 @@ export class QueueComponent implements OnInit, OnDestroy, AfterViewInit {
    * Obtiene la cola del servidor y actualiza la UI
    */
   fetchQueue() {
-    // Si estamos cambiando de canción, no dejamos que el polling interfiera
-    if (this.isTransitioning) return;
+  // Si estamos cambiando de canción (isTransitioning), ignoramos lo que diga el servidor
+  if (this.isTransitioning) return;
 
-    this.songService.getQueue().subscribe({
-      next: (data: QueuedSong[]) => {
-        if (data && data.length > 0) {
-          const incoming = data[0];
+  this.songService.getQueue().subscribe({
+    next: (data: QueuedSong[]) => {
+      if (data && data.length > 0) {
+        const incoming = data[0];
 
-          // CAMBIO DE CANCIÓN: Solo si el ID es diferente y no estamos en transición
-          if (!this.nowPlaying || this.nowPlaying.songId !== incoming.songId) {
-            console.log("Servidor reporta cambio de canción:", incoming.title);
-            this.nowPlaying = incoming;
-            this.upNext = data.slice(1);
-            this.resolveAndPlay(this.nowPlaying);
-          } 
-          // ACTUALIZACIÓN VISUAL: Misma canción, solo refrescamos la lista "Siguiente"
-          else {
-            this.upNext = data.slice(1);
-          }
+        // Solo cambiamos el audio si el ID es realmente distinto
+        if (!this.nowPlaying || this.nowPlaying.songId !== incoming.songId) {
+          this.nowPlaying = { ...incoming, timestamp: Date.now() };
+          this.upNext = data.slice(1).map(song => ({ ...song, timestamp: Date.now() }));
+          this.resolveAndPlay(this.nowPlaying);
+        } else {
+          // Si es la misma canción, solo actualizamos la lista visual de "Próximas"
+          this.upNext = data.slice(1).map(song => ({ ...song, timestamp: Date.now() }));
         }
-      },
-      error: (err) => {
-        if (err.status !== 0) console.error('Error de conexión:', err);
       }
-    });
-  }
+    }
+  });
+}
 
   /**
    * Carga el archivo de audio en el reproductor
@@ -194,5 +190,9 @@ export class QueueComponent implements OnInit, OnDestroy, AfterViewInit {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+
+  getTimestamp(): number {
+    return Date.now();
   }
 }

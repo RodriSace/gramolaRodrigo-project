@@ -1,2 +1,0 @@
-- [x] Add @SpringBootTest annotation to FailedPaymentTest.java
-- [x] Add @SpringBootTest annotation to SuccessfulPaymentTest.java

@@ -101,7 +101,6 @@ public class QueueService {
     private void initializeRealDeezerPlaylist() {
         List<String[]> trackData = List.of(
             new String[]{"124895572", "Shape of You", "Ed Sheeran"},
-            new String[]{"1420796", "Viva la Vida", "Coldplay"},
             new String[]{"1109731", "Levitating", "Dua Lipa"},
             new String[]{"3135556", "Someone Like You", "Adele"},
             new String[]{"1109730", "Good 4 U", "Olivia Rodrigo"},
@@ -183,34 +182,34 @@ public class QueueService {
      * Maneja el salto a la siguiente canción garantizando la consistencia del estado.
      */
     @Transactional
-    public Optional<QueuedSong> playNextSong() {
-        PlaybackState state = getOrCreatePlaybackState();
+public Optional<QueuedSong> playNextSong() {
+    PlaybackState state = getOrCreatePlaybackState();
 
-        // 1. Prioridad: Canciones pagadas por los usuarios
-        Optional<QueuedSong> paid = queuedSongRepository.findFirstByHasPlayedFalseOrderByPositionAsc();
-        if (paid.isPresent()) {
-            QueuedSong s = paid.get();
-            queuedSongRepository.delete(s);
-            
-            state.setCurrentSongId(s.getSongId());
-            playbackStateRepository.save(state);
-            return Optional.of(s);
-        }
-
-        // 2. Rotación de la lista base
-        long total = playlistSongRepository.count();
-        if (total == 0) return Optional.empty();
-
-        int nextIdx = (state.getCurrentPlaylistIndex() + 1) % (int) total;
-        state.setCurrentPlaylistIndex(nextIdx);
-        
-        return playlistSongRepository.findByPlaylistIndex(nextIdx).map(ps -> {
-            state.setCurrentSongId(ps.getSongId());
-            playbackStateRepository.save(state);
-            LOGGER.info("Transición exitosa a índice {}: {}", nextIdx, ps.getTitle());
-            return convertPlaylistSongToQueued(ps);
-        });
+    // 1. Prioridad: Canciones pagadas
+    Optional<QueuedSong> paid = queuedSongRepository.findFirstByHasPlayedFalseOrderByPositionAsc();
+    if (paid.isPresent()) {
+        QueuedSong s = paid.get();
+        queuedSongRepository.delete(s);
+        state.setCurrentSongId(s.getSongId()); // Sincronizamos ID inmediatamente
+        playbackStateRepository.save(state);
+        return Optional.of(s);
     }
+
+    // 2. Lista base (16 canciones)
+    long total = playlistSongRepository.count();
+    if (total == 0) return Optional.empty();
+
+    // Calculamos el siguiente índice y actualizamos el estado ANTES de devolver la canción
+    int nextIdx = (state.getCurrentPlaylistIndex() + 1) % (int) total;
+    state.setCurrentPlaylistIndex(nextIdx);
+    
+    return playlistSongRepository.findByPlaylistIndex(nextIdx).map(ps -> {
+        state.setCurrentSongId(ps.getSongId()); // Evita que el polling rebobine
+        playbackStateRepository.save(state);
+        LOGGER.info("Saltando a: {} (Índice {})", ps.getTitle(), nextIdx);
+        return convertPlaylistSongToQueued(ps);
+    });
+}
 
     private QueuedSong convertPlaylistSongToQueued(PlaylistSong ps) {
         QueuedSong q = new QueuedSong();

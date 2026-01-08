@@ -12,7 +12,7 @@
       <div class="card-glow"></div>
       <div class="now-playing-card">
         <div class="album-art-container">
-          <img [src]="nowPlaying.albumCover" class="album-art-main" alt="Cover">
+          <img [src]="nowPlaying.albumCover + '?t=' + nowPlaying.timestamp" class="album-art-main" alt="Cover">
           <div class="playing-bars">
             <div class="bar"></div><div class="bar"></div><div class="bar"></div>
           </div>
@@ -23,16 +23,7 @@
           <h2 class="current-title">{{ nowPlaying.title }}</h2>
           <h3 class="current-artist">{{ nowPlaying.artist }}</h3>
           
-          <div class="progress-container" *ngIf="remainingSeconds !== null">
-            <div class="timer-info">
-              <span>Restante</span>
-              <span class="time">{{ formatTime(remainingSeconds) }}</span>
-            </div>
-            <div class="progress-bar-bg">
-              <div class="progress-fill"></div>
-            </div>
           </div>
-        </div>
       </div>
     </section>
 
@@ -41,7 +32,7 @@
       <div class="scroll-area">
         <div *ngFor="let song of upNext" class="queue-item">
           <div class="item-thumb">
-            <img [src]="song.albumCover" alt="thumb">
+            <img [src]="song.albumCover + '?t=' + song.timestamp" alt="thumb">
           </div>
           <div class="item-info">
             <span class="item-title">{{ song.title }}</span>
