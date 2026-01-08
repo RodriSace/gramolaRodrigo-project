@@ -2,6 +2,7 @@ package com.example.gramolaRodrigo.entities;
 
 import java.time.Instant;
 
+import jakarta.persistence.Column; // Importa todo lo necesario de JPA
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -13,10 +14,11 @@ import jakarta.persistence.Table;
 public class Subscription {
 
     @Id
+    @Column(length = 36)
     private String id;
 
     @ManyToOne
-    @JoinColumn(name = "bar_id")
+    @JoinColumn(name = "bar_id", nullable = false)
     private Bar bar;
 
     private String planId;
@@ -26,6 +28,7 @@ public class Subscription {
 
     public Subscription() {}
 
+    // GETTERS Y SETTERS MANUALES (Solución definitiva a "cannot find symbol")
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 

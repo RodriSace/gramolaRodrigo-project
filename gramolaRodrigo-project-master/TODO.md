@@ -1,13 +1,19 @@
-# TODO: Fix Queue Reset Issue
+# TODO: Selenium Test Fixes
 
-## Steps to Complete
-- [x] Expand the default playlist in QueueService.java to include approximately 12 songs by adding more track IDs to initializeRealDeezerPlaylist()
-- [x] Modify getQueue() method to integrate paid songs into the playlist flow instead of prioritizing them
-- [x] Adjust playNextSong() method to ensure sequential playback without resets after paid songs
-- [x] Add better error handling for songs without preview URLs
-- [x] Add /api/deezer/url endpoint for URL resolution
-- [x] Improve error handling in frontend for failed URL resolution
-- [x] Expand playlist to 16 songs to reduce reset perception
-- [ ] Test the queue playback to ensure songs play sequentially
-- [ ] Verify that paid songs are inserted without disrupting the playlist flow
-- [ ] Check that the playlist loops correctly through all 16 songs
+## Completed Tasks
+- [x] Fixed login field selector from "username" to "email" in both tests
+- [x] Updated SuccessfulPaymentTest to follow functional flow: login -> search song -> click pay -> handle Stripe iframe -> verify success
+- [x] Updated FailedPaymentTest to follow functional flow: login -> search song -> click pay -> handle Stripe iframe -> verify error
+- [x] Used correct test card numbers: 4242424242424242 for success, 4111111111111111 for failure
+
+## Remaining Tasks
+- [ ] Run the updated Selenium tests to verify they work correctly
+- [ ] Check that the tests can handle the Stripe iframe properly
+- [ ] Verify database changes are checked (song added to queue for successful payment)
+- [ ] Ensure tests pass in headless mode
+
+## Notes
+- Tests now follow proper user flow instead of directly navigating to payment page
+- Stripe payment form is handled by switching to iframe and filling test card details
+- Success test verifies song is added to queue via toast notification
+- Failed test verifies error message is displayed

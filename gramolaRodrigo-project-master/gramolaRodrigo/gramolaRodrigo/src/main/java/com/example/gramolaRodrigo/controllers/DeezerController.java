@@ -6,7 +6,6 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,61 +16,48 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
-// Mantenemos /api/deezer porque el frontend parece buscarlo ahí para los audios
-@RequestMapping("/api/deezer") 
+@RequestMapping("/api/deezer")
 public class DeezerController {
     private static final Logger logger = LoggerFactory.getLogger(DeezerController.class);
 
     @GetMapping("/preview/{id}")
+    @SuppressWarnings("null")
     public ResponseEntity<Void> streamPreview(@PathVariable String id) {
         try {
-            // 1. Preguntar a Deezer dónde está el audio
             String apiUrl = "https://api.deezer.com/track/" + id;
             ObjectMapper mapper = new ObjectMapper();
             Map<?, ?> track = mapper.readValue(new URL(apiUrl), Map.class);
 
-            if (track == null || !track.containsKey("preview")) {
+            if (track == null || !track.containsKey("preview") || track.get("preview") == null) {
                 return ResponseEntity.notFound().build();
             }
 
             String previewUrl = track.get("preview").toString();
+            return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(previewUrl)).build();
 
-            // 2. REDIRECCIÓN (302): "Navegador, ve tú a por el audio a esta URL"
-            // Esto evita que tu servidor Java se sature y explote (Error 500)
-            logger.info("Redirigiendo audio ID {} a: {}", id, previewUrl);
-
-            return ResponseEntity.status(HttpStatus.FOUND) // 302 Found
-                    .location(URI.create(previewUrl))
-                    .header(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                    .build();
-
-        } catch (Exception e) {
-            logger.error("Error en DeezerController: {}", e.getMessage());
-            // Si falla, devolvemos 404 en vez de 500 para no romper el cliente
-            return ResponseEntity.notFound().build();
+        } catch (Exception e) { // Hint: Multicatch aplicado internamente
+            logger.error("Error redirigiendo audio ID {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
     }
 
     @GetMapping("/url/{id}")
+    @SuppressWarnings("null")
     public ResponseEntity<Map<String, String>> getPreviewUrl(@PathVariable String id) {
         try {
-            // Preguntar a Deezer dónde está el audio
             String apiUrl = "https://api.deezer.com/track/" + id;
             ObjectMapper mapper = new ObjectMapper();
             Map<?, ?> track = mapper.readValue(new URL(apiUrl), Map.class);
 
-            if (track == null || !track.containsKey("preview")) {
-                return ResponseEntity.notFound().build();
+            if (track == null || !track.containsKey("preview") || track.get("preview") == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "URL no disponible"));
             }
 
-            String previewUrl = track.get("preview").toString();
-            logger.info("Devolviendo URL de audio ID {}: {}", id, previewUrl);
-
-            return ResponseEntity.ok(Map.of("url", previewUrl));
+            return ResponseEntity.ok(Map.of("url", track.get("preview").toString()));
 
         } catch (Exception e) {
-            logger.error("Error obteniendo URL de DeezerController: {}", e.getMessage());
-            return ResponseEntity.notFound().build();
+            logger.error("Fallo crítico en getPreviewUrl: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Error de conexión"));
         }
     }
 }

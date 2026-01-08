@@ -1,30 +1,62 @@
-<div>
-  <h3>Cola de Reproducción</h3>
-  <audio #audioPlayer [attr.playsinline]="true" preload="auto" style="width:0;height:0;overflow:hidden;border:0;"></audio>
-  <!-- Eliminado control global: siempre reproducir si hay una canción -->
+<div class="gramola-wrapper">
+  <header class="main-header">
+    <h1>Gramola Rodrigo</h1>
+    <span class="live-tag">EN DIRECTO</span>
+  </header>
 
-  <!-- Overlay eliminado: se ha solicitado ocultarlo por completo -->
+  <audio #audioPlayer [attr.playsinline]="true" preload="auto" style="display:none;"></audio>
 
-  <div *ngIf="nowPlaying; else emptyQueue">
-    <h4>Sonando ahora:</h4>
-    <div>
-      <img [src]="nowPlaying.albumCover || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjY2NjY2NjIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjZmZmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBDb3ZlcjwvdGV4dD4KPHN2Zz4='" alt="Carátula" width="100" (error)="$event.target.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjY2NjY2NjIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjZmZmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBDb3ZlcjwvdGV4dD4KPHN2Zz4='">
-      <p><b>{{ nowPlaying.title }}</b> - {{ nowPlaying.artist }}</p>
-      <p *ngIf="audioStatus">Estado: {{ audioStatus }}</p>
-      <p *ngIf="remainingSeconds !== null">Tiempo restante: {{ formatTime(remainingSeconds) }}</p>
-      <!-- Reproducción automática por tiempo; no se muestran botones -->
-    </div>
+  <div *ngIf="nowPlaying; else emptyQueue" class="content-container">
+    
+    <section class="now-playing-section">
+      <div class="card-glow"></div>
+      <div class="now-playing-card">
+        <div class="album-art-container">
+          <img [src]="nowPlaying.albumCover" class="album-art-main" alt="Cover">
+          <div class="playing-bars">
+            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+          </div>
+        </div>
+        
+        <div class="song-details">
+          <span class="status-label">{{ audioStatus || 'Sincronizando' }}</span>
+          <h2 class="current-title">{{ nowPlaying.title }}</h2>
+          <h3 class="current-artist">{{ nowPlaying.artist }}</h3>
+          
+          <div class="progress-container" *ngIf="remainingSeconds !== null">
+            <div class="timer-info">
+              <span>Restante</span>
+              <span class="time">{{ formatTime(remainingSeconds) }}</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-fill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-    <h4 *ngIf="upNext.length > 0">A continuación:</h4>
-    <ul>
-      <li *ngFor="let song of upNext">
-        <img [src]="song.albumCover || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCA1MCA1MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjY2NjY2NjIi8+Cjx0ZXh0IHg9IjI1IiB5PSIyOCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjZmZmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBDb3ZlcjwvdGV4dD4KPHN2Zz4='" alt="Carátula" width="50" (error)="$event.target.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCA1MCA1MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjY2NjY2NjIi8+Cjx0ZXh0IHg9IjI1IiB5PSIyOCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjZmZmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBDb3ZlcjwvdGV4dD4KPHN2Zz4='">
-        <span>{{ song.title }} - {{ song.artist }}</span>
-      </li>
-    </ul>
+    <section class="queue-section">
+      <h4 class="section-title">A continuación <span class="count">({{ upNext.length }})</span></h4>
+      <div class="scroll-area">
+        <div *ngFor="let song of upNext" class="queue-item">
+          <div class="item-thumb">
+            <img [src]="song.albumCover" alt="thumb">
+          </div>
+          <div class="item-info">
+            <span class="item-title">{{ song.title }}</span>
+            <span class="item-artist">{{ song.artist }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </div>
 
   <ng-template #emptyQueue>
-    <p>No hay canciones en la cola.</p>
+    <div class="empty-state">
+      <div class="spinner"></div>
+      <p>Sincronizando con el servidor...</p>
+    </div>
   </ng-template>
 </div>

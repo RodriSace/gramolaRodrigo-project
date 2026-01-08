@@ -21,3 +21,11 @@
     </div>
   </div>
 </div>
+
+<!-- Toast notification -->
+<div *ngIf="showSuccess" class="toast-notification">
+  <div class="toast-content">
+    <span class="icon">✅</span>
+    <span>{{ successMessage }}</span>
+  </div>
+</div>

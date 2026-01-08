@@ -10,12 +10,22 @@ import com.example.gramolaRodrigo.entities.QueuedSong;
 
 @Repository
 public interface QueuedSongRepository extends JpaRepository<QueuedSong, Long> {
-	// Busca todas las canciones que no han sonado, ordenadas por posición
-	List<QueuedSong> findByHasPlayedFalseOrderByPositionAsc();
 
-	// Busca solo la primera canción que no ha sonado, ordenada por posición
-	Optional<QueuedSong> findFirstByHasPlayedFalseOrderByPositionAsc();
+    /**
+     * Busca todas las canciones que aún no han sido reproducidas.
+     * Utilizado por QueueService.getQueue() para mostrar la lista en Angular.
+     */
+    List<QueuedSong> findByHasPlayedFalseOrderByPositionAsc();
 
-	// Busca por songId y hasPlayed false
-	Optional<QueuedSong> findBySongIdAndHasPlayedFalse(String songId);
+    /**
+     * Busca la canción que ocupa el primer lugar en la cola de espera.
+     * Utilizado por QueueService.playNextSong() para decidir qué suena ahora.
+     */
+    Optional<QueuedSong> findFirstByHasPlayedFalseOrderByPositionAsc();
+
+    /**
+     * Busca una canción específica en la cola por su ID de Deezer.
+     * Útil para evitar duplicados o verificar estados antes de procesar pagos.
+     */
+    Optional<QueuedSong> findBySongIdAndHasPlayedFalse(String songId);
 }

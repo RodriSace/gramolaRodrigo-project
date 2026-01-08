@@ -62,6 +62,10 @@ export class PaymentFormComponent implements OnInit, OnDestroy {
   loading = false;
   message = '';
 
+  // Variables para toast
+  showSuccess = false;
+  successMessage = '';
+
 
 
   constructor(private http: HttpClient, private auth: AuthService) {}
@@ -240,9 +244,19 @@ export class PaymentFormComponent implements OnInit, OnDestroy {
         console.log('Pago confirmado exitosamente');
         this.loading = false;
 
-        // Simplemente avisamos al padre que ha sido un éxito
-        // El padre se encargará de cerrar el modal y mostrar la notificación
-        this.success.emit();
+        // Mostrar toast de éxito
+        this.successMessage = `¡Pago aceptado! "${this.songData.title}" añadida a la cola.`;
+        this.showSuccess = true;
+
+        // Ocultar toast después de 4 segundos
+        setTimeout(() => {
+          this.showSuccess = false;
+        }, 4000);
+
+        // Cerrar modal después de mostrar toast
+        setTimeout(() => {
+          this.success.emit();
+        }, 500);
       },
       error: (err) => {
         console.error('Error confirmando pago:', err);

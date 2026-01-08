@@ -1,0 +1,135 @@
+:host {
+  --primary-green: #1db954;
+  --bg-dark: #121212;
+  --card-bg: #181818;
+  --text-main: #ffffff;
+  --text-dim: #b3b3b3;
+}
+
+.gramola-wrapper {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 0 20px;
+  color: var(--text-main);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.live-tag {
+  background: #ff4b2b;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+}
+
+/* CARD DE REPRODUCCIÓN ACTUAL */
+.now-playing-card {
+  position: relative;
+  background: linear-gradient(135deg, #282828 0%, #121212 100%);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  gap: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+
+.album-art-main {
+  width: 160px;
+  height: 160px;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+  object-fit: cover;
+}
+
+.song-details {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+}
+
+.status-label {
+  color: var(--primary-green);
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.current-title {
+  font-size: 1.5rem;
+  margin: 0;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.current-artist {
+  color: var(--text-dim);
+  font-size: 1rem;
+  margin: 4px 0 16px 0;
+}
+
+/* BARRA DE PROGRESO */
+.progress-container { width: 100%; }
+.timer-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.progress-bar-bg {
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 30%; /* Esto se animará con JS luego si quieres */
+  background: var(--primary-green);
+  border-radius: 2px;
+}
+
+/* LISTA DE COLA */
+.queue-section { margin-top: 30px; }
+.section-title { font-size: 1.1rem; margin-bottom: 15px; }
+.count { color: var(--text-dim); font-weight: 400; }
+
+.scroll-area {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.queue-item:hover { background: rgba(255,255,255,0.05); }
+
+.item-thumb img {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+}
+
+.item-info { display: flex; flex-direction: column; }
+.item-title { font-size: 0.95rem; font-weight: 600; }
+.item-artist { font-size: 0.8rem; color: var(--text-dim); }

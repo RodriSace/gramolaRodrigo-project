@@ -4,6 +4,17 @@ import { SongService } from '../song.service';
 import { API_URL } from '../api.config';
 import { Subscription } from 'rxjs';
 
+interface QueuedSong {
+  id?: number;
+  songId: string;
+  title: string;
+  artist: string;
+  albumCover: string;
+  previewUrl: string;
+  duration?: number;
+  position?: number;
+}
+
 @Component({
   selector: 'app-queue',
   standalone: true,
@@ -14,27 +25,30 @@ import { Subscription } from 'rxjs';
 export class QueueComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('audioPlayer') audioPlayer!: ElementRef<HTMLAudioElement>;
 
-  nowPlaying: any = null;
-  upNext: any[] = [];
+  nowPlaying: QueuedSong | null = null;
+  upNext: QueuedSong[] = []; 
   
-  private songEndTimer: any;
   private fetchInterval: any;
   private queueChangedSub?: Subscription;
   
   remainingSeconds: number | null = null;
-  audioStatus: string | null = null;
-  API_URL = API_URL;
-  private endHandled = false;
+  audioStatus: string | null = 'Sincronizando...';
+  
+  // CERROJO DE SEGURIDAD: Evita que el polling reinicie la canción durante un salto
+  private isTransitioning = false;
 
   constructor(private songService: SongService) { }
 
   ngOnInit(): void {
-    this.fetchInterval = setInterval(() => this.fetchQueue(), 4000);
+    // 1. Polling cada 5 segundos para refrescar la lista visual
+    this.fetchInterval = setInterval(() => this.fetchQueue(), 5000);
+    
+    // 2. Escuchar cambios manuales (ej: nuevas canciones pagadas)
     this.queueChangedSub = this.songService.queueChanged$.subscribe(() => {
       this.fetchQueue();
     });
     
-    // Desbloqueo inicial
+    // 3. Desbloqueo inicial por interacción del usuario
     document.addEventListener('click', () => {
       if (this.audioPlayer && this.audioPlayer.nativeElement.paused && this.nowPlaying) {
         this.audioPlayer.nativeElement.play().catch(() => {});
@@ -46,16 +60,18 @@ export class QueueComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.audioPlayer) {
       const audio = this.audioPlayer.nativeElement;
       
+      // Evento: La canción terminó de sonar
       audio.addEventListener('ended', () => {
-        this.audioStatus = 'Finalizado';
         this.handleTrackEnd();
       });
 
-      audio.addEventListener('error', (e) => {
-        console.error('Error audio, reintentando...', e);
-        setTimeout(() => this.handleTrackEnd(), 2000);
+      // Evento: Error de carga (URL de Deezer caducada o fallo de red)
+      audio.addEventListener('error', () => {
+        console.error('Error detectado en la reproducción, saltando...');
+        setTimeout(() => this.handleTrackEnd(), 1000);
       });
       
+      // Actualización del segundero
       audio.addEventListener('timeupdate', () => {
         if(audio.duration) {
            this.remainingSeconds = Math.ceil(audio.duration - audio.currentTime);
@@ -66,102 +82,115 @@ export class QueueComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnDestroy(): void {
-    if (this.songEndTimer) clearTimeout(this.songEndTimer);
     if (this.fetchInterval) clearInterval(this.fetchInterval);
     if (this.queueChangedSub) this.queueChangedSub.unsubscribe();
   }
 
+  /**
+   * Obtiene la cola del servidor y actualiza la UI
+   */
   fetchQueue() {
-    this.songService.getQueue().subscribe({
-      next: (data) => {
-        // SEGURIDAD: Si ya estamos tocando algo, NO cambiamos aunque la cola cambie.
-        // Esperamos a que la canción termine sola.
-        if (this.nowPlaying != null) {
-            return;
-        }
+    // Si estamos cambiando de canción, no dejamos que el polling interfiera
+    if (this.isTransitioning) return;
 
-        if (data.length > 0) {
-          const nextSong = data[0];
-          this.nowPlaying = nextSong;
-          this.resolveAndPlay(nextSong);
+    this.songService.getQueue().subscribe({
+      next: (data: QueuedSong[]) => {
+        if (data && data.length > 0) {
+          const incoming = data[0];
+
+          // CAMBIO DE CANCIÓN: Solo si el ID es diferente y no estamos en transición
+          if (!this.nowPlaying || this.nowPlaying.songId !== incoming.songId) {
+            console.log("Servidor reporta cambio de canción:", incoming.title);
+            this.nowPlaying = incoming;
+            this.upNext = data.slice(1);
+            this.resolveAndPlay(this.nowPlaying);
+          } 
+          // ACTUALIZACIÓN VISUAL: Misma canción, solo refrescamos la lista "Siguiente"
+          else {
+            this.upNext = data.slice(1);
+          }
         }
       },
-      error: (err) => console.error('Error cola', err)
+      error: (err) => {
+        if (err.status !== 0) console.error('Error de conexión:', err);
+      }
     });
   }
 
-  resolveAndPlay(song: any) {
+  /**
+   * Carga el archivo de audio en el reproductor
+   */
+  resolveAndPlay(song: QueuedSong) {
     if (!this.audioPlayer) return;
-    const audio = this.audioPlayer.nativeElement;
-    this.endHandled = false;
-    this.audioStatus = 'Cargando...';
 
-    // Resolver URL (Backend o Directa)
     if (song.previewUrl && song.previewUrl.startsWith('http')) {
         this.setAudioSrcAndPlay(song.previewUrl);
     } else {
+        // Si no hay URL, intentamos recuperarla del endpoint de Deezer
         fetch(`${API_URL}/api/deezer/url/${song.songId}`)
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-                }
-                return res.json();
-            })
+            .then(res => res.json())
             .then(data => {
                 if (data.url) this.setAudioSrcAndPlay(data.url);
-                else throw new Error("URL vacía");
+                else throw new Error("URL no disponible");
             })
-            .catch((error) => {
-                console.error('Error resolviendo URL:', error);
-                this.handleTrackEnd();
-            });
+            .catch(() => this.handleTrackEnd());
     }
   }
 
   setAudioSrcAndPlay(url: string) {
     const audio = this.audioPlayer.nativeElement;
+    
+    // Evitar recargas innecesarias si es la misma URL
+    if (audio.src === url && !audio.paused) return;
+
     audio.src = url;
     audio.load();
-
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise.then(() => {
-        this.audioStatus = 'Reproduciendo';
-        audio.muted = false; 
-      }).catch(() => {
-        this.audioStatus = 'Reproduciendo (Mute)';
+    audio.play()
+      .then(() => this.audioStatus = 'En antena')
+      .catch(() => {
+        this.audioStatus = 'Audio en espera (Requiere Click)';
+        // Fallback: Silenciar para intentar auto-play (política Chrome)
         audio.muted = true;
-        audio.play().catch(() => setTimeout(() => this.handleTrackEnd(), 2000));
+        audio.play().catch(() => {});
       });
-    }
   }
 
+  /**
+   * Lógica de transición al finalizar la pista
+   */
   private handleTrackEnd() {
-    if (this.endHandled) return;
-    this.endHandled = true;
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
     
-    // CORRECCIÓN CRÍTICA:
-    // Pedimos la siguiente canción al backend y usamos LA QUE NOS DEVUELVE.
-    // No llamamos a fetchQueue() porque la cola ya estará vacía.
+    this.audioStatus = 'Cargando siguiente...';
+
     this.songService.playNext().subscribe({
-      next: (nextSong) => {
-        if (nextSong) {
-            console.log("Siguiente canción recibida:", nextSong.title);
-            this.nowPlaying = nextSong; // Actualizamos la canción actual
-            this.upNext = [];
-            this.resolveAndPlay(nextSong); // Y la reproducimos directamente
+      next: (nextSong: QueuedSong) => {
+        if (nextSong && nextSong.songId) {
+            this.nowPlaying = nextSong;
+            this.upNext = []; 
+            this.resolveAndPlay(nextSong);
+            
+            // Liberamos el cerrojo tras 2 segundos para dar tiempo al backend a estabilizarse
+            setTimeout(() => {
+                this.isTransitioning = false;
+                this.fetchQueue();
+            }, 2000);
         } else {
-            // Si no devuelve nada (raro), forzamos recarga
             this.nowPlaying = null;
-            this.fetchQueue();
+            this.audioStatus = 'Fin de la lista';
+            this.isTransitioning = false;
         }
       },
-      error: () => setTimeout(() => this.handleTrackEnd(), 2000)
+      error: (err) => {
+        console.error("Fallo en la transición de canción:", err);
+        this.isTransitioning = false;
+      }
     });
   }
 
   formatTime(seconds: number | null): string {
-    if (seconds === null) return '--:--';
+    if (seconds === null || isNaN(seconds)) return '0:00';
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s < 10 ? '0' : ''}${s}`;

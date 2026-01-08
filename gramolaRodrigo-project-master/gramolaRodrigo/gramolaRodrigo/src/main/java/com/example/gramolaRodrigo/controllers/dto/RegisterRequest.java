@@ -12,6 +12,6 @@ public class RegisterRequest {
     private String email;
     private String pwd1;
     private String pwd2;
-    private String clientId;      // Deezer App ID
-    private String clientSecret;  // Deezer App Secret
+    private String clientId;      // ID opcional para la API de Deezer
+    private String clientSecret;  // Secret opcional para la API de Deezer
 }
