@@ -6,15 +6,11 @@ import { AuthService } from '../auth.service';
 import { Subscription } from 'rxjs';
 
 interface QueuedSong {
-  id?: number;
   songId: string;
   title: string;
   artist: string;
   albumCover: string;
   previewUrl: string;
-  duration?: number;
-  position?: number;
-  timestamp?: number;
 }
 
 @Component({
@@ -29,17 +25,14 @@ export class QueueComponent implements OnInit, OnDestroy, AfterViewInit {
 
   nowPlaying: QueuedSong | null = null;
   upNext: QueuedSong[] = []; 
+  audioStatus = 'Iniciando...';
+  remainingSeconds: number | null = null;
   
+  public nextTrackUrl: string | null = null;
+  private preloadedSongId: string | null = null; // Seguimiento del ID precargado
+  private isTransitioning = false;
   private fetchInterval: any;
   private queueChangedSub?: Subscription;
-  
-  remainingSeconds: number | null = null;
-  audioStatus: string | null = 'Iniciando...';
-  
-  private isTransitioning = false;
-  // Cambiado a placehold.co que es más fiable
-  private defaultCover = 'https://placehold.co/150x150?text=No+Cover';
-  private corsProxy = 'https://corsproxy.io/?';
 
   constructor(
     private songService: SongService, 
@@ -48,38 +41,21 @@ export class QueueComponent implements OnInit, OnDestroy, AfterViewInit {
   ) { }
 
   ngOnInit(): void {
-  this.audioStatus = 'Verificando suscripción...';
-
-  this.authService.checkSubscriptionStatus().subscribe({
-    next: (active: boolean) => {
+    this.authService.checkSubscriptionStatus().subscribe(active => {
       if (active) {
-        // ELIMINADO: loadInitialQueue() ya no se llama aquí.
-        // Solo llamamos al servidor para obtener la lista real.
-        this.fetchQueue(); 
+        this.fetchQueue();
         this.fetchInterval = setInterval(() => this.fetchQueue(), 5000);
-      } else {
-        this.audioStatus = 'Suscripción inactiva';
-      }
-    },
-    error: () => this.audioStatus = 'Error de conexión con el bar'
-  });
-
-  this.queueChangedSub = this.songService.queueChanged$.subscribe(() => {
-    this.fetchQueue();
-  });
-}
+      } else { this.audioStatus = 'Suscripción inactiva'; }
+    });
+    this.queueChangedSub = this.songService.queueChanged$.subscribe(() => this.fetchQueue());
+  }
 
   ngAfterViewInit(): void {
     if (this.audioPlayer) {
       const audio = this.audioPlayer.nativeElement;
       audio.addEventListener('ended', () => this.handleTrackEnd());
-      audio.addEventListener('error', () => {
-        setTimeout(() => this.handleTrackEnd(), 1500);
-      });
       audio.addEventListener('timeupdate', () => {
-        if(audio.duration) {
-           this.remainingSeconds = Math.ceil(audio.duration - audio.currentTime);
-        }
+        if(audio.duration) this.remainingSeconds = Math.ceil(audio.duration - audio.currentTime);
       });
     }
   }
@@ -91,53 +67,44 @@ export class QueueComponent implements OnInit, OnDestroy, AfterViewInit {
 
   fetchQueue() {
     if (this.isTransitioning) return;
-    this.songService.getQueue().subscribe({
-      next: (data: QueuedSong[]) => {
-        if (data && data.length > 0) {
-          const incoming = data[0];
-          // Solo cambiamos si la canción del servidor es distinta a la actual
-          if (!this.nowPlaying || this.nowPlaying.songId !== incoming.songId) {
-            this.nowPlaying = { ...incoming };
-            this.upNext = data.slice(1);
-            this.resolveAndPlay(this.nowPlaying);
-          } else {
-            this.upNext = data.slice(1);
-          }
+    this.songService.getQueue().subscribe((data: QueuedSong[]) => {
+      if (!data || data.length === 0) return;
+      const incoming = data[0];
+
+      // Sincronizar canción actual si el servidor cambió
+      if (!this.nowPlaying || this.nowPlaying.songId !== incoming.songId) {
+        this.nowPlaying = { ...incoming };
+        this.upNext = data.slice(1);
+        this.setAudioSrcAndPlay(this.nowPlaying.previewUrl);
+        this.nextTrackUrl = null;
+        this.preloadedSongId = null;
+      } else {
+        this.upNext = data.slice(1);
+      }
+
+      // GESTIÓN DE PRECARGA: Si lo que sigue no es lo que tenemos en memoria, actualizar
+      if (this.upNext.length > 0) {
+        const nextInLine = this.upNext[0];
+        if (nextInLine.songId !== this.preloadedSongId) {
+          this.nextTrackUrl = nextInLine.previewUrl;
+          this.preloadedSongId = nextInLine.songId;
         }
+      } else {
+        this.nextTrackUrl = null;
+        this.preloadedSongId = null;
       }
     });
   }
 
-  resolveAndPlay(song: QueuedSong) {
-    if (!this.audioPlayer) return;
-    this.audioStatus = 'Obteniendo stream...';
-
-    const targetUrl = `https://api.deezer.com/track/${song.songId}`;
-    
-    fetch(this.corsProxy + encodeURIComponent(targetUrl))
-      .then(res => res.json())
-      .then(track => {
-        if (track && track.preview) {
-          this.nowPlaying!.albumCover = track.album.cover_medium;
-          this.setAudioSrcAndPlay(track.preview);
-        } else {
-          this.handleTrackEnd();
-        }
-      })
-      .catch(() => this.handleTrackEnd());
-  }
-
   setAudioSrcAndPlay(url: string) {
+    if (!url) return;
     const audio = this.audioPlayer.nativeElement;
     audio.src = url;
     audio.load();
-    audio.play()
-      .then(() => this.audioStatus = 'En antena')
-      .catch(() => {
-        this.audioStatus = 'Click para reproducir';
-        audio.muted = true; 
-        audio.play().catch(() => {});
-      });
+    audio.play().then(() => this.audioStatus = 'En antena').catch(() => {
+      this.audioStatus = 'Muteado';
+      audio.muted = true; audio.play();
+    });
   }
 
   private handleTrackEnd() {
@@ -145,20 +112,20 @@ export class QueueComponent implements OnInit, OnDestroy, AfterViewInit {
     this.isTransitioning = true;
     this.audioStatus = 'Siguiente pista...';
 
-    this.songService.playNext().subscribe({
-      next: () => {
-        this.fetchQueue();
-        setTimeout(() => { this.isTransitioning = false; }, 2000);
-      },
-      error: () => { this.isTransitioning = false; }
+    // Usar precarga solo si coincide con el orden actual de la cola
+    if (this.nextTrackUrl && this.upNext.length > 0 && this.upNext[0].songId === this.preloadedSongId) {
+      const nextSong = this.upNext[0];
+      this.nowPlaying = { ...nextSong };
+      this.upNext = this.upNext.slice(1);
+      this.setAudioSrcAndPlay(this.nextTrackUrl);
+      this.nextTrackUrl = null;
+      this.preloadedSongId = null;
+    }
+
+    this.songService.playNext().subscribe(() => {
+      setTimeout(() => { this.isTransitioning = false; this.fetchQueue(); }, 1000);
     });
   }
 
-  getSafeUrl(url: string): SafeUrl {
-    return this.sanitizer.bypassSecurityTrustUrl(url);
-  }
-
-  onImageError(event: any) {
-    event.target.src = this.defaultCover;
-  }
+  getSafeUrl(url: string): SafeUrl { return this.sanitizer.bypassSecurityTrustUrl(url); }
 }

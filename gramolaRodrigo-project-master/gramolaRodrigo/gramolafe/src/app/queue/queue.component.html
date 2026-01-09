@@ -7,47 +7,38 @@
   <audio #audioPlayer [attr.playsinline]="true" preload="auto" style="display:none;"></audio>
 
   <div *ngIf="nowPlaying; else emptyQueue" class="content-container">
-    
     <section class="now-playing-section">
       <div class="card-glow"></div>
       <div class="now-playing-card">
         <div class="album-art-container">
-          <img [src]="nowPlaying.albumCover + '?t=' + nowPlaying.timestamp" class="album-art-main" alt="Cover" (error)="onImageError($event)">
-          <div class="playing-bars">
-            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-          </div>
+          <img [src]="nowPlaying.albumCover" class="album-art-main" alt="Cover">
+          <div class="playing-bars"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
         </div>
-        
         <div class="song-details">
-          <span class="status-label">{{ audioStatus || 'Sincronizando' }}</span>
+          <span class="status-label">{{ audioStatus }}</span>
           <h2 class="current-title">{{ nowPlaying.title }}</h2>
           <h3 class="current-artist">{{ nowPlaying.artist }}</h3>
-          
-          </div>
+          <div *ngIf="remainingSeconds" class="timer">Restan {{ remainingSeconds }}s</div>
+        </div>
       </div>
     </section>
 
     <section class="queue-section">
       <h4 class="section-title">A continuación <span class="count">({{ upNext.length }})</span></h4>
       <div class="scroll-area">
-        <div *ngFor="let song of upNext" class="queue-item">
-          <div class="item-thumb">
-            <img [src]="getSafeUrl(song.albumCover)" alt="thumb" (error)="onImageError($event)">
-          </div>
+        <div *ngFor="let song of upNext; let i = index" class="queue-item">
+          <div class="item-thumb"><img [src]="getSafeUrl(song.albumCover)" alt="thumb"></div>
           <div class="item-info">
             <span class="item-title">{{ song.title }}</span>
             <span class="item-artist">{{ song.artist }}</span>
+            <span *ngIf="i === 0 && nextTrackUrl" class="preloaded-tag">LISTA</span>
           </div>
         </div>
       </div>
     </section>
-
   </div>
 
   <ng-template #emptyQueue>
-    <div class="empty-state">
-      <div class="spinner"></div>
-      <p>Sincronizando con el servidor...</p>
-    </div>
+    <div class="empty-state"><div class="spinner"></div><p>Sincronizando...</p></div>
   </ng-template>
 </div>

@@ -56,14 +56,12 @@ public class QueueService {
     @Transactional
     public void init() {
         try {
-            // 1. Limpieza para evitar conflictos de datos
             subscriptionRepository.deleteAll();
             barRepository.deleteAll();
             playlistSongRepository.deleteAll();
             queuedSongRepository.deleteAll();
             playbackStateRepository.deleteAll();
 
-            // 2. Bar Maestro
             Bar bar = new Bar();
             bar.setId(UUID.randomUUID().toString());
             bar.setEmail("verse@ejemplo.com");
@@ -82,101 +80,88 @@ public class QueueService {
             sub.setEndAt(Instant.now().plus(Duration.ofDays(365)));
             subscriptionRepository.save(sub);
 
-            // 3. Carga dinámica de Deezer
             initializeDynamicDeezerPlaylist();
 
-            // 4. Estado inicial
             PlaybackState initialState = new PlaybackState();
             initialState.setId("global");
             initialState.setCurrentPlaylistIndex(0);
             playlistSongRepository.findByPlaylistIndex(0).ifPresent(s -> initialState.setCurrentSongId(s.getSongId()));
             playbackStateRepository.save(initialState);
 
-            LOGGER.info(">>> Backend sincronizado: URLs de Deezer actualizadas.");
+            LOGGER.info(">>> Backend sincronizado: Datos de Deezer cargados.");
         } catch (Exception e) {
             LOGGER.error("Fallo crítico en init: {}", e.getMessage());
         }
     }
 
     private void initializeDynamicDeezerPlaylist() {
-    // IDs VERIFICADOS proporcionados para éxitos actuales
-    List<String> trackIds = List.of(
-        "2947516331", // Die With A Smile — Lady Gaga
-        "2801558052", // BIRDS OF A FEATHER — Billie Eilish
-        "2728070371", // Good Luck, Babe! — Chappell Roan
-        "2610711672", // Beautiful Things — Benson Boone
-        "2743578151", // Espresso — Sabrina Carpenter
-        "2954912511", // Taste — Sabrina Carpenter
-        "3050380851"  // APT. — ROSÉ
-    );
-
-    int index = 0;
-    for (String id : trackIds) {
-        fetchAndSaveSong(id, index++);
+        List<String> trackIds = List.of("2947516331", "2801558052", "2728070371", "2610711672", "2743578151", "2954912511", "3050380851");
+        int index = 0;
+        for (String id : trackIds) { fetchAndSaveSong(id, index++); }
     }
-}
 
     private void fetchAndSaveSong(String id, int idx) {
-    PlaylistSong s = new PlaylistSong();
-    s.setSongId(id); s.setPlaylistIndex(idx); s.setDuration(30);
-
-    try {
-        URL url = new URL("https://api.deezer.com/track/" + id);
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestProperty("User-Agent", "Mozilla/5.0");
-        
-        if (con.getResponseCode() == 200) {
-            Map<?, ?> map = new ObjectMapper().readValue(con.getInputStream(), Map.class);
-            
-            // Extraemos con seguridad para evitar el error "Cannot invoke Map.get because return value is null"
-            Map<?, ?> artistMap = (Map<?, ?>) map.get("artist");
-            Map<?, ?> albumMap = (Map<?, ?>) map.get("album");
-
-            s.setTitle((String) map.get("title"));
-            if (artistMap != null) s.setArtist((String) artistMap.get("name"));
-            s.setPreviewUrl((String) map.get("preview"));
-            if (albumMap != null) s.setAlbumCover((String) albumMap.get("cover_medium"));
-            
+        PlaylistSong s = new PlaylistSong();
+        s.setSongId(id); s.setPlaylistIndex(idx); s.setDuration(30);
+        try {
+            URL url = new URL("https://api.deezer.com/track/" + id);
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestProperty("User-Agent", "Mozilla/5.0");
+            if (con.getResponseCode() == 200) {
+                Map<?, ?> map = new ObjectMapper().readValue(con.getInputStream(), Map.class);
+                Map<?, ?> artistMap = (Map<?, ?>) map.get("artist");
+                Map<?, ?> albumMap = (Map<?, ?>) map.get("album");
+                s.setTitle((String) map.get("title"));
+                if (artistMap != null) s.setArtist((String) artistMap.get("name"));
+                s.setPreviewUrl((String) map.get("preview"));
+                if (albumMap != null) s.setAlbumCover((String) albumMap.get("cover_medium"));
+                playlistSongRepository.save(s);
+            }
+        } catch (Exception e) {
+            s.setTitle("Track #" + id); s.setArtist("Deezer Artist");
+            s.setPreviewUrl("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3");
             playlistSongRepository.save(s);
         }
-    } catch (Exception e) {
-        LOGGER.warn("Error cargando ID {}: {}. Usando datos de respaldo.", id, e.getMessage());
-        s.setTitle("Track #" + id);
-        s.setArtist("Deezer Artist");
-        s.setPreviewUrl("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3");
-        playlistSongRepository.save(s);
     }
-}
 
     public List<QueuedSong> getQueue() {
-        List<QueuedSong> paid = queuedSongRepository.findByHasPlayedFalseOrderByPositionAsc();
-        List<PlaylistSong> allStatic = playlistSongRepository.findAll();
         PlaybackState state = getOrCreatePlaybackState();
-        
+        String currentId = state.getCurrentSongId();
         int currentIdx = state.getCurrentPlaylistIndex();
-        int total = allStatic.size();
-        
-        List<QueuedSong> rotated = new ArrayList<>();
-        if (total > 0) {
-            Map<Integer, PlaylistSong> songMap = allStatic.stream()
-                .collect(Collectors.toMap(PlaylistSong::getPlaylistIndex, s -> s));
+        List<QueuedSong> fullQueue = new ArrayList<>();
 
-            for (int i = 0; i < total; i++) {
-                int next = (currentIdx + i) % total;
-                PlaylistSong ps = songMap.get(next);
-                if (ps != null) rotated.add(convertPlaylistSongToQueued(ps));
+        // 1. Identificar canción actual (priorizando pagos)
+        List<QueuedSong> playedPaid = queuedSongRepository.findAll().stream()
+                .filter(s -> s.getSongId().equals(currentId) && s.isHasPlayed())
+                .collect(Collectors.toList());
+
+        if (!playedPaid.isEmpty()) {
+            fullQueue.add(playedPaid.get(playedPaid.size() - 1));
+        } else {
+            playlistSongRepository.findByPlaylistIndex(currentIdx)
+                    .ifPresent(ps -> fullQueue.add(convertPlaylistSongToQueued(ps)));
+        }
+
+        // 2. Añadir canciones pagadas pendientes
+        fullQueue.addAll(queuedSongRepository.findByHasPlayedFalseOrderByPositionAsc());
+
+        // 3. Añadir resto de la playlist (circular)
+        List<PlaylistSong> allStatic = playlistSongRepository.findAll();
+        if (!allStatic.isEmpty()) {
+            int total = allStatic.size();
+            Map<Integer, PlaylistSong> songMap = allStatic.stream()
+                    .collect(Collectors.toMap(PlaylistSong::getPlaylistIndex, s -> s));
+            for (int i = 1; i < total; i++) {
+                int nextIdx = (currentIdx + i) % total;
+                Optional.ofNullable(songMap.get(nextIdx)).ifPresent(ps -> fullQueue.add(convertPlaylistSongToQueued(ps)));
             }
         }
-        
-        List<QueuedSong> fullQueue = new ArrayList<>(paid);
-        fullQueue.addAll(rotated);
         return fullQueue;
     }
 
     @Transactional
     public Optional<QueuedSong> playNextSong() {
         PlaybackState state = getOrCreatePlaybackState();
-
         // Prioridad: Pagadas
         Optional<QueuedSong> paid = queuedSongRepository.findFirstByHasPlayedFalseOrderByPositionAsc();
         if (paid.isPresent()) {
@@ -187,14 +172,11 @@ public class QueueService {
             playbackStateRepository.save(state);
             return Optional.of(s);
         }
-
-        // Lista estática
+        // Playlist normal
         long total = playlistSongRepository.count();
         if (total == 0) return Optional.empty();
-
         int nextIdx = (state.getCurrentPlaylistIndex() + 1) % (int) total;
         state.setCurrentPlaylistIndex(nextIdx);
-        
         return playlistSongRepository.findByPlaylistIndex(nextIdx).map(ps -> {
             state.setCurrentSongId(ps.getSongId());
             playbackStateRepository.save(state);
@@ -202,9 +184,6 @@ public class QueueService {
         });
     }
 
-    /**
-     * RESTAURADO: Necesario para PaymentsController y QueueController
-     */
     public void addSongToQueue(String id, String title, String artist, String cover, String preview, int duration) {
         QueuedSong s = new QueuedSong();
         s.setSongId(id);
@@ -216,27 +195,18 @@ public class QueueService {
         s.setPosition((int) queuedSongRepository.count() + 1);
         s.setHasPlayed(false);
         queuedSongRepository.save(s);
-        LOGGER.info("Canción añadida a cola pagada: {}", s.getTitle());
     }
 
     private QueuedSong convertPlaylistSongToQueued(PlaylistSong ps) {
         QueuedSong q = new QueuedSong();
-        q.setId(ps.getId());
-        q.setSongId(ps.getSongId());
-        q.setTitle(ps.getTitle());
-        q.setArtist(ps.getArtist());
-        q.setAlbumCover(ps.getAlbumCover());
-        q.setPreviewUrl(ps.getPreviewUrl());
-        q.setDuration(ps.getDuration());
+        q.setSongId(ps.getSongId()); q.setTitle(ps.getTitle()); q.setArtist(ps.getArtist());
+        q.setAlbumCover(ps.getAlbumCover()); q.setPreviewUrl(ps.getPreviewUrl()); q.setDuration(ps.getDuration());
         return q;
     }
 
     private PlaybackState getOrCreatePlaybackState() {
         return playbackStateRepository.findById("global").orElseGet(() -> {
-            PlaybackState n = new PlaybackState();
-            n.setId("global");
-            n.setCurrentPlaylistIndex(0);
-            return n;
+            PlaybackState n = new PlaybackState(); n.setId("global"); n.setCurrentPlaylistIndex(0); return n;
         });
     }
 }
