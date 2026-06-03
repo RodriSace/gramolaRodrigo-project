@@ -29,3 +29,7 @@ gramolafe/yarn-error.log
 
 # Zip files
 *.zip
+
+# Root documentation files
+/*.md
+/*.html
