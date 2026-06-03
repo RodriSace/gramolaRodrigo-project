@@ -1,0 +1,160 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+
+.auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at top left, #1db95422, #121212 40%),
+                radial-gradient(circle at bottom right, #191414, #121212);
+    font-family: 'Outfit', sans-serif;
+    padding: 40px 20px;
+}
+
+.register-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    padding: 40px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.register-card h2 {
+    color: #fff;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(to right, #fff, #1db954);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+    color: #b3b3b3;
+    font-size: 0.95rem;
+    margin-bottom: 32px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.form-group input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #1db954;
+    box-shadow: 0 0 0 4px rgba(29, 185, 84, 0.15);
+}
+
+.spotify-config-box {
+    background: rgba(29, 185, 84, 0.05);
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px dashed rgba(29, 185, 84, 0.3);
+    margin: 32px 0;
+}
+
+.spotify-config-box h4 {
+    color: #1db954;
+    font-size: 1rem;
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.spotify-config-box h4::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: #1db954;
+    border-radius: 50%;
+}
+
+.spotify-config-box p {
+    font-size: 0.8rem;
+    color: #888;
+    line-height: 1.4;
+    margin-bottom: 20px;
+}
+
+.auth-btn {
+    width: 100%;
+    padding: 16px;
+    background: #1db954;
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 10px;
+    box-shadow: 0 4px 15px rgba(29, 185, 84, 0.3);
+}
+
+.auth-btn:hover {
+    background: #1ed760;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(29, 185, 84, 0.4);
+}
+
+.auth-btn:disabled {
+    background: #166534;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.auth-footer {
+    margin-top: 32px;
+    text-align: center;
+    color: #b3b3b3;
+    font-size: 0.9rem;
+}
+
+.auth-footer a {
+    color: #1db954;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+/* Spinner animado */
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(0,0,0,0.1);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -1,0 +1,85 @@
+<div class="pricing-container">
+  <div class="background-glows">
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+  </div>
+
+  <div class="pricing-content">
+    <header class="pricing-header">
+      <h1 class="logo-title">LA GRAMOLA <span>VIRTUAL</span></h1>
+      <h2>Elige tu plan de suscripción</h2>
+      <p class="subtitle">Activa tu cuenta para conectar tu bar con Spotify y permitir a tus clientes priorizar sus canciones favoritas.</p>
+    </header>
+
+    <div *ngIf="errorMessage" class="error-banner">
+      <span class="error-icon">⚠️</span>
+      <p>{{ errorMessage }}</p>
+    </div>
+
+    <!-- Pricing Grid -->
+    <div class="pricing-grid" *ngIf="plans.length > 0; else loadingPlans">
+      <div *ngFor="let plan of plans" class="price-card" [class.featured]="plan.durationMonths === 12">
+        <div class="card-badge" *ngIf="plan.durationMonths === 12">MÁS POPULAR</div>
+        <div class="card-badge" *ngIf="plan.durationMonths === 6">MEJOR VALOR</div>
+        
+        <h3 class="plan-name">{{ plan.name }}</h3>
+        
+        <div class="price-section">
+          <span class="currency">€</span>
+          <span class="price-amount">{{ (plan.priceCents / 100).toFixed(2) }}</span>
+          <span class="period">/{{ plan.durationMonths === 1 ? 'mes' : plan.durationMonths + ' meses' }}</span>
+        </div>
+
+        <ul class="features-list">
+          <li>
+            <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+            Cola de reproducción inteligente
+          </li>
+          <li>
+            <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+            Vínculo nativo con Spotify (OAuth2)
+          </li>
+          <li>
+            <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+            Pasarela de pagos Stripe para clientes
+          </li>
+          <li>
+            <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+            Configuración de precio por canción
+          </li>
+          <li>
+            <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+            Soporte técnico premium
+          </li>
+        </ul>
+
+        <button 
+          (click)="selectPlan(plan.id)" 
+          class="checkout-btn" 
+          [disabled]="loading || !token"
+          [class.accent]="plan.durationMonths === 12">
+          <span *ngIf="!loading">Activar Plan</span>
+          <div *ngIf="loading" class="btn-spinner"></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Spinner templating -->
+    <ng-template #loadingPlans>
+      <div class="loading-state" *ngIf="!errorMessage">
+        <div class="spinner"></div>
+        <p>Cargando planes oficiales de suscripción...</p>
+      </div>
+    </ng-template>
+  </div>
+</div>

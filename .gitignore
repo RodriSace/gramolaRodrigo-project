@@ -1,0 +1,31 @@
+# System Files
+Thumbs.db
+db.properties
+.DS_Store
+
+# IDE and Editors
+.idea/
+*.iws
+*.iml
+*.ipr
+.settings/
+.classpath
+.project
+.vscode/
+
+# Maven (Backend)
+backend/target/
+backend/bin/
+
+# Angular (Frontend)
+gramolafe/.angular/
+gramolafe/dist/
+gramolafe/node_modules/
+gramolafe/npm-debug.log
+gramolafe/yarn-error.log
+
+# Log files
+*.log
+
+# Zip files
+*.zip

@@ -1,0 +1,4 @@
+-- Inicialización de datos del sistema
+-- NOTA: Los planes de suscripción se insertan desde DataInitializer.java
+-- para evitar duplicados (comprueba si la tabla está vacía antes de insertar).
+-- REQUISITO: Precios y URLs en base de datos, no hardcodeados en el código.

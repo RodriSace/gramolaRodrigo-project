@@ -1,0 +1,156 @@
+<div class="music-container">
+    <aside class="queue-sidebar">
+        <h2>En cola</h2>
+        
+        <!-- REPRODUCTOR MEJORADO -->
+        <div class="spotify-status" [class.connected]="spotifyConnected">
+            <button *ngIf="!spotifyConnected" (click)="connectSpotify()" class="spotify-connect-btn">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg" width="20">
+                Conectar Spotify
+            </button>
+            <div *ngIf="spotifyConnected" class="status-badge connected">
+                <span>●</span> Spotify Conectado
+            </div>
+        </div>
+
+        <!-- SECCIÓN DE DISPOSITIVOS (Figura 28) -->
+        <div class="devices-card" *ngIf="spotifyConnected">
+            <div class="card-header">
+                <strong>Dispositivos</strong>
+                <button (click)="getDevices()" class="refresh-btn">🔄</button>
+            </div>
+            <div class="devices-list">
+                <div *ngFor="let device of devices" class="device-item" [class.active]="device.is_active">
+                    <span class="status-dot"></span>
+                    <div class="device-info">
+                        <strong>{{ device.name }}</strong>
+                        <span>{{ device.type }}</span>
+                    </div>
+                </div>
+                <p *ngIf="devices.length === 0" class="no-devices">No hay dispositivos activos.</p>
+            </div>
+            <div class="error-msg" *ngIf="deviceError">{{ deviceError }}</div>
+        </div>
+
+        <!-- SECCIÓN DE PLAYLISTS (Capítulo 4.2 del Manual) -->
+        <div class="devices-card playlists-card" *ngIf="spotifyConnected">
+            <div class="card-header">
+                <strong>Mis Playlists</strong>
+                <button (click)="getPlaylists()" class="refresh-btn" title="Recargar Playlists">🔄</button>
+            </div>
+            <div class="devices-list playlists-list" *ngIf="playlists.length > 0">
+                <div *ngFor="let playlist of playlists" class="device-item playlist-item" 
+                     [class.active]="playlist.uri === activePlaylistUri"
+                     (click)="selectPlaylist(playlist)">
+                    <img *ngIf="playlist.images && playlist.images.length > 0" [src]="playlist.images[0].url" class="playlist-mini-art">
+                    <i class="fas fa-music" *ngIf="!playlist.images || playlist.images.length === 0"></i>
+                    <div class="device-info">
+                        <strong>{{ playlist.name }}</strong>
+                        <span>{{ playlist.tracks?.total || 0 }} canciones</span>
+                    </div>
+                    <span class="status-dot" *ngIf="playlist.uri === activePlaylistUri"></span>
+                </div>
+            </div>
+            <p *ngIf="playlists.length === 0" class="no-devices">No se encontraron playlists.</p>
+        </div>
+
+        <div class="mini-player premium-player" *ngIf="displayedTrack">
+            <div class="player-header">
+                <span class="pulse-icon" [class.paused]="isPaused"></span>
+                <p>{{ isPaused ? 'Listo para reproducir' : 'Reproductor en Vivo (SDK)' }}</p>
+            </div>
+            
+            <div class="now-playing-content">
+                <img *ngIf="displayedTrack.album?.images && displayedTrack.album.images.length > 0" [src]="displayedTrack.album.images[0].url" class="now-playing-art" alt="Album Art">
+                <div class="now-playing-details">
+                    <strong class="marquee-text">{{ displayedTrack.name }}</strong>
+                    <span>{{ displayedTrack.artists[0].name }}</span>
+                </div>
+            </div>
+
+            <!-- CONTROLES DE REPRODUCCIÓN PREMIUM -->
+            <div class="player-controls">
+                <button class="control-btn play-pause-btn" (click)="togglePlay()" [title]="isPaused ? 'Reproducir' : 'Pausar'">
+                    <i class="fas" [class.fa-play]="isPaused" [class.fa-pause]="!isPaused"></i>
+                </button>
+                <button class="control-btn skip-btn" (click)="nextTrack()" title="Siguiente canción">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+            </div>
+
+            <!-- BARRA DE PROGRESO -->
+            <div class="progress-container">
+                <span class="time-current">{{ formatTime(progressTime) }}</span>
+                <div class="progress-bar">
+                    <div class="progress-fill" [style.width.%]="totalDuration > 0 ? (progressTime / totalDuration) * 100 : 0"></div>
+                </div>
+                <span class="time-total">{{ formatTime(totalDuration) }}</span>
+            </div>
+
+            <!-- PRÓXIMAS CANCIONES INTEGRADAS -->
+            <div class="integrated-queue" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;" *ngIf="localPaidQueue.length > 0 || nextTracks.length > 0">
+                
+                <!-- CANCIONES PAGADAS -->
+                <div *ngIf="localPaidQueue.length > 0" style="margin-bottom: 10px;">
+                    <div style="color: #1db954; font-size: 0.75rem; font-weight: bold; margin-bottom: 8px; text-transform: uppercase;">A continuación (Pagadas)</div>
+                    <div *ngFor="let item of localPaidQueue | slice:0:2" class="queue-item" style="background: rgba(29,185,84,0.1); border-left: 2px solid #1db954; padding: 5px; border-radius: 4px; margin-bottom: 4px;">
+                        <img *ngIf="item.album && item.album.images && item.album.images.length > 0" [src]="item.album.images[0].url" class="queue-art" style="width: 30px; height: 30px;">
+                        <div class="track-info">
+                            <strong style="font-size: 0.85rem;">{{ item.name }}</strong>
+                            <span style="font-size: 0.75rem;">{{ item.artists[0].name }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CANCIONES DE LA PLAYLIST -->
+                <div *ngIf="nextTracks.length > 0">
+                    <div style="color: #b3b3b3; font-size: 0.75rem; font-weight: bold; margin-bottom: 8px; text-transform: uppercase;">Música de fondo</div>
+                    <div *ngFor="let item of nextTracks | slice:0:3" class="queue-item" style="padding: 5px; margin-bottom: 2px;">
+                        <img *ngIf="item.album && item.album.images && item.album.images.length > 0" [src]="item.album.images[0].url" class="queue-art" style="width: 30px; height: 30px;">
+                        <i class="fas fa-music queue-art" *ngIf="!item.album || !item.album.images || item.album.images.length === 0" style="width: 30px; height: 30px; display:flex;align-items:center;justify-content:center;background:#282828;"></i>
+                        <div class="track-info">
+                            <strong style="font-size: 0.85rem;">{{ item.name }}</strong>
+                            <span style="font-size: 0.75rem;">{{ item.artists[0].name }}</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="empty-queue" *ngIf="!displayedTrack">
+            <i class="fas fa-music"></i>
+            <p>La Gramola está vacía.</p>
+            <p>Selecciona una Playlist o busca una canción.</p>
+        </div>
+    </aside>
+
+    <main class="search-section">
+        <header class="top-bar">
+            <div class="search-box">
+                <input type="text" 
+                       [(ngModel)]="searchQuery" 
+                       (input)="onSearchInput()" 
+                       placeholder="Busca una canción o artista...">
+                <!-- BOTÓN ELIMINADO: La búsqueda es automática -->
+            </div>
+            <button class="logout-btn" (click)="logout()">Cerrar Sesión</button>
+        </header>
+
+        <div class="results-grid">
+            <div *ngFor="let track of searchResults" class="track-card">
+                <img [src]="track.album.images[0]?.url" [alt]="track.name">
+                <div class="card-info">
+                    <h3>{{ track.name }}</h3>
+                    <p>{{ track.artists[0].name }}</p>
+                    <button class="pay-btn" (click)="paySong(track)">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+

@@ -1,0 +1,52 @@
+<div class="auth-container">
+    <div class="register-card">
+        <h2>Únete a la Gramola</h2>
+        <p class="subtitle">Registra tu bar y empieza a sonar</p>
+
+        <form (submit)="onRegister($event)">
+            <div class="form-group">
+                <label for="barName">Nombre del Bar</label>
+                <input type="text" id="barName" name="barName" [(ngModel)]="barName" required placeholder="Ej: El Bar de Rodrigo">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" [(ngModel)]="email" required placeholder="email@ejemplo.com">
+            </div>
+
+            <div class="form-group">
+                <label for="pwd1">Contraseña</label>
+                <input type="password" id="pwd1" name="pwd1" [(ngModel)]="pwd1" required placeholder="••••••••">
+            </div>
+
+            <div class="form-group">
+                <label for="pwd2">Confirmar Contraseña</label>
+                <input type="password" id="pwd2" name="pwd2" [(ngModel)]="pwd2" required placeholder="••••••••">
+            </div>
+
+            <div class="spotify-config-box">
+                <h4>Configuración de Spotify</h4>
+                <p>Necesitas un Client ID y Secret de Spotify for Developers.</p>
+                
+                <div class="form-group">
+                    <label for="clientId">Spotify Client ID</label>
+                    <input type="text" id="clientId" name="clientId" [(ngModel)]="clientId" required placeholder="Tu Client ID">
+                </div>
+
+                <div class="form-group">
+                    <label for="clientSecret">Spotify Client Secret</label>
+                    <input type="password" id="clientSecret" name="clientSecret" [(ngModel)]="clientSecret" required placeholder="Tu Client Secret">
+                </div>
+            </div>
+
+            <button type="submit" class="auth-btn" [disabled]="loading">
+                <span *ngIf="!loading">Crear Cuenta</span>
+                <span *ngIf="loading" class="spinner"></span>
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            ¿Ya tienes cuenta? <a routerLink="/login">Inicia Sesión</a>
+        </div>
+    </div>
+</div>

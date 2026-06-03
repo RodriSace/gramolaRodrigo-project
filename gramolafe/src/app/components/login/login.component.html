@@ -1,0 +1,72 @@
+<div class="auth-container">
+    <div class="login-card">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg" alt="Spotify" class="spotify-logo">
+        <h2>Gramola Rodrigo</h2>
+        <p class="subtitle">Entra en tu Gramola Virtual</p>
+
+        <div *ngIf="errorMessage" class="error-message">
+            {{ errorMessage }}
+        </div>
+
+        <form (submit)="onLogin($event)">
+            <div class="form-group">
+                <label for="email">Email del Bar</label>
+                <input type="email" id="email" name="email" [(ngModel)]="email" required placeholder="email@ejemplo.com">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" [(ngModel)]="password" required placeholder="••••••••">
+            </div>
+
+            <button type="submit" class="auth-btn" [disabled]="loading">
+                <span *ngIf="!loading">Iniciar Sesión</span>
+                <span *ngIf="loading" class="spinner"></span>
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <a href="javascript:void(0)" (click)="showResetModal = true" style="color: #b3b3b3; text-decoration: none; font-size: 0.9rem;">¿Has olvidado tu contraseña?</a>
+            <br><br>
+            ¿No tienes cuenta? <a routerLink="/register">Regístrate ahora</a>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE RECUPERACIÓN DE CONTRASEÑA -->
+<div class="modal-overlay" *ngIf="showResetModal">
+    <div class="payment-modal" style="max-width: 400px; width: 90%;">
+        <div class="modal-header">
+            <h3 style="margin: 0;">Recuperar Contraseña</h3>
+            <button (click)="closeResetModal()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">×</button>
+        </div>
+        
+        <div *ngIf="resetSuccessMessage" class="success-message" style="color: #1db954; text-align: center; margin: 15px 0; font-weight: bold;">
+            {{ resetSuccessMessage }}
+        </div>
+        <div *ngIf="resetErrorMessage" class="error-message" style="color: #e22134; text-align: center; margin: 15px 0;">
+            {{ resetErrorMessage }}
+        </div>
+
+        <!-- PASO 1: PEDIR EMAIL -->
+        <form (ngSubmit)="onForgotPassword()" #forgotForm="ngForm" *ngIf="!resetSuccessMessage" style="margin-top: 15px;">
+            <p style="color: #b3b3b3; font-size: 0.9rem; margin-bottom: 15px; text-align: center;">Introduce tu email y te enviaremos un enlace de recuperación.</p>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label style="display: block; color: #b3b3b3; margin-bottom: 5px; font-size: 0.9rem;">Email del Bar</label>
+                <input type="email" name="resetEmail" [(ngModel)]="resetEmail" required placeholder="tu@email.com" style="width: 100%; padding: 10px; background: #333; border: 1px solid #444; color: white; border-radius: 4px; box-sizing: border-box;">
+            </div>
+
+            <button type="submit" class="auth-btn" [disabled]="!forgotForm.valid || resetLoading" style="width: 100%; padding: 12px; background: #1db954; color: white; border: none; border-radius: 20px; font-weight: bold; cursor: pointer;">
+                <span *ngIf="!resetLoading">Enviar Enlace</span>
+                <span *ngIf="resetLoading" class="spinner"></span>
+            </button>
+        </form>
+
+        <div *ngIf="resetSuccessMessage" style="text-align: center;">
+            <p style="color: #b3b3b3; font-size: 0.9rem; margin-bottom: 20px;">Revisa la bandeja de entrada de tu correo electrónico o Mailtrap.</p>
+            <button (click)="closeResetModal()" class="auth-btn" style="width: 100%; padding: 12px; background: #1db954; color: white; border: none; border-radius: 20px; font-weight: bold; cursor: pointer;">
+                Entendido
+            </button>
+        </div>
+    </div>
+</div>
