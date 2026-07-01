@@ -31,6 +31,5 @@ gramolafe/yarn-error.log
 *.zip
 
 # Root documentation files
-/*.md
 /*.html
 /*.docx
